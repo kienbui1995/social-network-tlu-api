@@ -1,7 +1,7 @@
 package middlewares
 
 import (
-	"log"
+	"fmt"
 
 	valid "github.com/asaskevich/govalidator"
 	"github.com/gin-gonic/gin"
@@ -40,16 +40,16 @@ func SetToken(c *gin.Context) {
 			return
 		}
 	}
-
+	account.ID = accountID
 	tokenstring, errGenerateToken := helpers.GenerateToken(account, secret)
 	if errGenerateToken != nil {
 		helpers.ResponseServerErrorJSON(c)
-		log.Printf("GenerateToken helpers: %s\n", errGenerateToken.Error())
+		fmt.Printf("GenerateToken helpers: %s\n", errGenerateToken.Error())
 		return
 	}
 	if _, errSaveToken := service.SaveToken(account, tokenstring); errSaveToken != nil {
 		helpers.ResponseServerErrorJSON(c)
-		log.Printf("SaveToken helpers: %s\n", errSaveToken.Error())
+		fmt.Printf("SaveToken helpers: %s\n", errSaveToken.Error())
 		return
 	}
 	helpers.ResponseSuccessJSON(c, configs.EcSuccess, "Set token successful", map[string]interface{}{"id": accountID, "token": tokenstring})
@@ -79,7 +79,9 @@ func AuthRequired() gin.HandlerFunc {
 			helpers.ResponseAuthJSON(c, configs.EcAuthInvalidToken, "ExtractClaims helpers: "+errExtractClaims.Error())
 			return
 		}
-		existToken, errCheckExistToken := service.CheckExistToken(int64(claims["userid"].(float64)), tokenString)
+		accountID := int64(claims["userid"].(float64))
+		fmt.Printf("accID: %v\n", accountID)
+		existToken, errCheckExistToken := service.CheckExistToken(accountID, tokenString)
 		if errCheckExistToken != nil {
 			helpers.ResponseAuthJSON(c, configs.EcAuthNoExistToken, "CheckExistToken services: "+errCheckExistToken.Error())
 			return

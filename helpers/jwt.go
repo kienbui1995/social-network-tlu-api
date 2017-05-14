@@ -50,8 +50,8 @@ func ValidateToken(tokenstring string, secret []byte) (bool, error) {
 }
 
 // ExtractClaims func to get map claims
-func ExtractClaims(tokenStr string, secret []byte) (jwt.MapClaims, error) {
-	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
+func ExtractClaims(tokenstring string, secret []byte) (jwt.MapClaims, error) {
+	token, err := jwt.Parse(tokenstring, func(token *jwt.Token) (interface{}, error) {
 		// check token signing method etc
 		return secret, nil
 	})

@@ -5,6 +5,7 @@ import (
 	"github.com/kienbui1995/social-network-tlu-api/middlewares"
 )
 
+// InitRoutes to start router
 func InitRoutes() *gin.Engine {
 	router := gin.New()
 
@@ -12,15 +13,15 @@ func InitRoutes() *gin.Engine {
 	router.Use(gin.Recovery())
 	router.Use(middlewares.CORS())
 
-	v1 := router.Group("v1")
+	v1 := router.Group("")
 	{
 		//
-		AddRoutesAuthentication(v1)
+		AddRoutesAccounts(v1)
 
 		v1.Use(middlewares.AuthRequired())
 		{
 
-			// AddRoutesUsers(v1)
+			AddRoutesUsers(v1)
 			// AddRoutesPosts(v1)
 			// AddRoutesGroups(v1)
 		}

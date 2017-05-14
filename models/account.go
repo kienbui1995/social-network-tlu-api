@@ -1,7 +1,7 @@
 package models
 
 import (
-	valid "github.com/asaskevich/govalidator"
+	"github.com/asaskevich/govalidator"
 )
 
 //Account struct
@@ -23,5 +23,5 @@ func (a Account) IsEmpty() bool {
 
 // Validate func
 func (a Account) Validate() (bool, error) {
-	return valid.ValidateStruct(a)
+	return govalidator.ValidateStruct(a)
 }

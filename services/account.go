@@ -2,6 +2,7 @@ package services
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/jmcvetta/neoism"
 	"github.com/kienbui1995/social-network-tlu-api/models"
@@ -9,9 +10,14 @@ import (
 
 // AccountServiceInterface include method list
 type AccountServiceInterface interface {
-	Authentication(username string, password string, device string) models.User
+	Login(account models.Account) (int64, error)
+	SaveToken(account models.Account, token string) (bool, error)
+	CheckExistToken(accountid int64, token string) (bool, error)
+	DeleteToken(accountid int64, token string) (bool, error)
+	GetDeviceByUserID(accountid int64) ([]string, error)
 }
 
+// accountService struct
 type accountService struct{}
 
 // NewAccountService contructor
@@ -19,22 +25,17 @@ func NewAccountService() *accountService {
 	return new(accountService)
 }
 
-// Authentication func
-func (service accountService) Authentication(username string, password string, device string) models.User {
-	return models.User{}
-}
-
 // Login func to user login system
 // models.Account
 // int error
-func (service accountService) Login(account models.Account) (int, error) {
+func (service accountService) Login(account models.Account) (int64, error) {
 	stmt := `
 	MATCH (u:User) WHERE u.username	 = {username} return ID(u) as id, u.password as password
 	`
 	params := neoism.Props{"username": account.Username, "password": account.Password}
 
 	res := []struct {
-		ID       int    `json:"id"`
+		ID       int64  `json:"id"`
 		Password string `json:"password"`
 	}{}
 	cq := neoism.CypherQuery{
@@ -58,18 +59,18 @@ func (service accountService) Login(account models.Account) (int, error) {
 // SaveToken func to insert token to db
 // int string string
 // bool error
-func (service accountService) SaveToken(account models.Account, tokenstring string) (bool, error) {
+func (service accountService) SaveToken(account models.Account, token string) (bool, error) {
 	stmt := `
 	MATCH (u:User) WHERE ID(u) = {userid}
 		MERGE (u)-[:LOGGED_IN]->(d:Device {device:{device}}) SET d.token = {token}
 	` // chua test
-	params := neoism.Props{"userid": account.ID, "token": tokenstring, "device": account.Device}
+	params := neoism.Props{"userid": account.ID, "token": token, "device": account.Device}
 
 	cq := neoism.CypherQuery{
 		Statement:  stmt,
 		Parameters: params,
 	}
-
+	fmt.Printf("cq: %v\n", cq)
 	err := conn.Cypher(&cq)
 	if err != nil {
 		return false, err
@@ -83,7 +84,7 @@ func (service accountService) SaveToken(account models.Account, tokenstring stri
 func (service accountService) CheckExistToken(accountid int64, token string) (bool, error) {
 	//check exist token
 	stmt := `
-	 MATCH (u:User) WHERE ID(u) = {accountid} return exists( ((u)-[:LOGGED_IN]->(:Device{ token:{token}})) ) as exist_token
+	 MATCH (u:User) WHERE ID(u) = {accountid} return exists( (u)-[:LOGGED_IN]->(:Device{ token:{token} }) ) as exist_token
 	`
 	params := neoism.Props{"accountid": accountid, "token": token}
 
@@ -99,6 +100,7 @@ func (service accountService) CheckExistToken(accountid int64, token string) (bo
 	if err != nil {
 		return false, err
 	}
+	fmt.Printf("res: %v\n", res)
 	if len(res) == 0 {
 		return false, errors.New("Token don't exist")
 	}
@@ -111,7 +113,7 @@ func (service accountService) CheckExistToken(accountid int64, token string) (bo
 // DeleteToken func to delete token of user
 // int string
 // bool error
-func (service accountService) DeleteToken(accountid int, token string) (bool, error) {
+func (service accountService) DeleteToken(accountid int64, token string) (bool, error) {
 	stmt := `
 	MATCH (u:User) WHERE ID(u) = {accountid}
 	MATCH ((u)-[:LOGGED_IN]->(d))
@@ -138,7 +140,7 @@ func (service accountService) DeleteToken(accountid int, token string) (bool, er
 // GetDeviceByUserID func to get deive list
 // int
 // []string error
-func (service accountService) GetDeviceByUserID(accountid int) ([]string, error) {
+func (service accountService) GetDeviceByUserID(accountid int64) ([]string, error) {
 
 	stmt := `
 		MATCH (u:User)-[:LOGGED_IN]->(d:Device)
