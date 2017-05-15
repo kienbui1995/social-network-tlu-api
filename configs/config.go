@@ -12,6 +12,12 @@ const (
 	JWTSecretKey = "socialnetworkTLU"
 )
 
+// Mail Sender const
+const (
+	MailAddress = "kien.laohac@gmail.com"
+	MailKey     = ""
+)
+
 //ObjectType const
 const (
 	PostObject    = 1
@@ -78,7 +84,7 @@ const (
 	EcAuthNoExistFacebook               = 410 //	No exist account with this facebook.
 	EcAuthInvalidFacebookToken          = 411 //	Error in checking token.
 	EcAuthWrongPassword                 = 412 //	Error in login: Wrong password.
-	EcAuthNoExistEmail                  = 413 //
+	EcAuthNoExistEmail                  = 413 //  No exist email
 	EcAuthWrongRecoveryCode             = 414 //	Error in recover password: Wrong recovery code.
 	EcMesgNoBody                        = 501 //	Missing message body
 )

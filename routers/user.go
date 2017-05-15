@@ -15,6 +15,10 @@ func AddRoutesUsers(r *gin.RouterGroup) {
 		routes.GET("/:id", controller.Get)
 		routes.DELETE("/:id", controller.Delete)
 		routes.POST("", controller.Create)
-		// routes.PUT("/:id", controller.Update)
+		routes.PUT("/:id", controller.Update)
+
+		// work with posts
+		// routes.POST("/:id/posts", controller.CreatePost)
+		// routes.GET("/:id/posts", controller.GetPosts)
 	}
 }

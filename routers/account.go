@@ -12,7 +12,12 @@ func AddRoutesAccounts(r *gin.RouterGroup) {
 	routes := r.Group("")
 	{
 		routes.POST("/login", controller.Login)
+		routes.POST("/sign_up", controller.SignUp)
 		routes.POST("/logout", controller.Logout)
+		routes.POST("/login_facebook", controller.LoginViaFacebook)
+		routes.POST("/forgot_password", controller.ForgotPassword)
+		routes.POST("/verify_recovery_code", controller.VerifyRecoveryCode)
+		routes.PUT("/renew_password", controller.RenewPassword)
 
 	}
 }

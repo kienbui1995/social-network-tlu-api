@@ -11,7 +11,7 @@ type User struct {
 	FirstName     string `json:"first_name,omitempty"`
 	MiddleName    string `json:"middle_name,omitempty"`
 	LastName      string `json:"last_name,omitempty"`
-	BirthDay      string `json:"birthday,omitempty"`
+	Birthday      string `json:"birthday,omitempty"`
 	Avatar        string `json:"avatar,omitempty"`
 	Cover         string `json:"cover,omitempty"`
 	About         string `json:"about,omitempty"`
@@ -22,6 +22,7 @@ type User struct {
 	FacebookToken string `json:"facebook_token,omitempty"`
 	CreatedAt     int64  `json:"created_at,omitempty"`
 	UpdatedAt     int64  `json:"updated_at,omitempty"`
+	IsVertified   bool   `json:"is_vertified,omitempty"`
 	Status        int    `json:"status"`
 	Posts         int    `json:"posts"`
 	Followers     int    `json:"followers"`
