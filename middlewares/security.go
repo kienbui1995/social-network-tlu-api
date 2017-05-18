@@ -1,6 +1,7 @@
 package middlewares
 
 import (
+	"errors"
 	"fmt"
 
 	valid "github.com/asaskevich/govalidator"
@@ -93,4 +94,18 @@ func AuthRequired() gin.HandlerFunc {
 		c.Next()
 
 	}
+}
+
+// GetUserIDFromToken func return userid to check permission
+func GetUserIDFromToken(token string) (int64, error) {
+
+	if len(token) == 0 {
+		return -1, errors.New("NULL userid in token")
+	}
+
+	claims, errExtractClaims := helpers.ExtractClaims(token, secret)
+	if errExtractClaims != nil {
+		return -1, errExtractClaims
+	}
+	return int64(claims["userid"].(float64)), nil
 }

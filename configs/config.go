@@ -18,6 +18,15 @@ const (
 	MailKey     = ""
 )
 
+// Sort const
+const (
+	ILimit = 25
+	SLimit = "25"
+	ISkip  = 0
+	SSkip  = "0"
+	SSort  = "-created_at"
+)
+
 //ObjectType const
 const (
 	PostObject    = 1
@@ -39,6 +48,7 @@ const (
 const (
 	EcSuccess                           = 1   //	Success
 	EcNoExistObject                     = 2   //	No exist this object.
+	EcExisObject                        = 3   // Exist this object
 	EcParam                             = 100 //	Invalid parameter
 	EcParamMissingField                 = 101 //	Missing a few fields.
 	EcParamUserID                       = 110 //	Invalid user id
@@ -89,16 +99,78 @@ const (
 	EcMesgNoBody                        = 501 //	Missing message body
 )
 
+// ErrorCode  string Table
+const (
+	SEcSuccess                           = "Success"
+	SEcNoExistObject                     = "No exist this object."
+	SEcParam                             = "Invalid parameter"
+	SEcParamMissingField                 = "Missing a few fields."
+	SEcParamUserID                       = "Invalid user id"
+	SEcParamUserField                    = "Invalid user info field"
+	SEcParamEmail                        = "Invalid email"
+	SEcParamFieldList                    = "Invalid field list"
+	SEcParamPhotoID                      = "Invalid photo id"
+	SEcParamTitle                        = "Invalid title" // ~needfix ~doing
+	SEcParamAccessToken                  = 190             //	"Invalid OAuth 2.0 Access Token"
+	SEcPermission                        = 200             //	"Permissions error"
+	SEcPermissionUser                    = 210             //	"User not visible"
+	SEcPermissionPhoto                   = 221             //	"Photo not visible"
+	SEcPermissionMessage                 = 230             //	"Permissions disallow message to user"
+	SEcEdit                              = 300             //	"Edit failure"
+	SEcEditUserData                      = 310             //	"User data edit failure"
+	SEcUsersCreateInvalidEmail           = 370             //	"The email address you provided is not a valid email address"
+	SEcUsersCreateExistingEmail          = 371             //	"The email address you provided belongs to an existing account"
+	SEcUsersCreateBirthday               = 372             //	"The birthday provided is not valid"
+	SEcUsersCreatePassword               = 373             //	T"he password provided is too short or weak"
+	SEcUsersRegisterInvalidCredential    = 374             //	The login credential you provided is invalid.
+	SEcUsersRegisterConfFailure          = 375             //	Failed to send confirmation message to the specified login credential.
+	SEcUsersRegisterExisting             = 376             //	The login credential you provided belongs to an existing account
+	SEcUsersRegisterDefaultError         = 377             //	Sorry, we were unable to process your registration.
+	SEcUsersRegisterPasswordBlank        = 378             //	Your password cannot be blank. Please try another.
+	SEcUsersRegisterPasswordInvalidChars = 379             //	Your password contains invalid characters. Please try another.
+	SEcUsersRegisterPasswordShort        = 380             //	Your password must be at least 6 characters long. Please try another.
+	SEcUsersRegisterPasswordWeak         = 381             //	Your password should be more secure. Please try another.
+	SEcUsersRegisterUsernameError        = 382             //	Please enter a valid username.
+	SEcUsersRegisterMissingInput         = 383             //	You must fill in all of the fields.
+	SEcUsersRegisterIncompleteBday       = 384             //	You must indicate your full birthday to register.
+	SEcUsersRegisterInvalidEmail         = 385             //	Please enter a valid email address.
+	SEcUsersRegisterEmailDisabled        = 386             //	The email address you entered has been disabled. Please contact disabled@facebook.com with any questions.
+	SEcUsersRegisterAddUserFailed        = 387             //	There was an error with your registration. Please try registering again.
+	SEcUsersRegisterNoGender             = 388             //	Please select either Male or Female.
+	SEcAuthEmail                         = 400             //	Invalid email address
+	SEcAuthLogin                         = 401             //	Invalid username or password
+	SEcAuthMissingToken                  = 404             //	Missing token.
+	SEcAuthInvalidToken                  = 405             //	Invalid token.
+	SEcAuthNoExistToken                  = 406             //	No exist token.
+	SEcAuthCheckToken                    = 407             //	Error in checking token.
+	SEcAuthGenerateToken                 = 408             //	Error in generate token.
+	SEcAuthNoExistUser                   = 409             //	No exist user.
+	SEcAuthNoExistFacebook               = 410             //	No exist account with this facebook.
+	SEcAuthInvalidFacebookToken          = 411             //	Error in checking token.
+	SEcAuthWrongPassword                 = 412             //	Error in login: Wrong password.
+	SEcAuthNoExistEmail                  = 413             //  No exist email
+	SEcAuthWrongRecoveryCode             = 414             //	Error in recover password: Wrong recovery code.
+	SEcMesgNoBody                        = 501             //	Missing message body
+)
+
 // TypePost const
 const (
-	Post           = 0
-	PostStatus     = 1
-	PostPhoto      = 2
-	PostLink       = 3
-	PostGroup      = 4
-	PostSharePost  = 5
-	PostSharePage  = 6
-	PostShareGroup = 7
+	IPost           = 0
+	SPost           = "post"
+	IPostStatus     = 1
+	SPostStatus     = "status"
+	IPostPhoto      = 2
+	SPostPhoto      = "photo"
+	IPostLink       = 3
+	SPostLink       = "link"
+	IPostGroup      = 4
+	SPostGroup      = "post_group"
+	IPostSharePost  = 5
+	SPostSharePost  = "share_post"
+	IPostSharePage  = 6
+	SPostSharePage  = "share_page"
+	IPostShareGroup = 7
+	SPostShareGroup = "share_group"
 )
 
 //FCMToken struct

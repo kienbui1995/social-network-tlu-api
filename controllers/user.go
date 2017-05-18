@@ -19,17 +19,16 @@ type UserController struct {
 
 // GetAll func
 func (controller UserController) GetAll(c *gin.Context) {
-
 	params := helpers.ParamsGetAll{}
-	params.Skip, _ = strconv.Atoi(c.DefaultQuery("skip", "0"))
-	params.Limit, _ = strconv.Atoi(c.DefaultQuery("limit", "25"))
+	params.Skip, _ = strconv.Atoi(c.DefaultQuery("skip", configs.SSkip))
+	params.Limit, _ = strconv.Atoi(c.DefaultQuery("limit", configs.SLimit))
 	users, errGetAll := controller.Service.GetAll(params)
 	if errGetAll != nil {
 		helpers.ResponseServerErrorJSON(c)
 		fmt.Printf("GetAll service: %s\n", errGetAll.Error())
 		return
 	}
-	helpers.ResponseEntityListJSON(c, 1, "Get user list successful", users, nil, len(users))
+	helpers.ResponseEntityListJSON(c, 1, "Get user list successful", users, params, len(users))
 }
 
 // Get func
@@ -62,71 +61,6 @@ func (controller UserController) Delete(c *gin.Context) {
 	}
 	helpers.ResponseNoContentJSON(c)
 }
-
-// // SignUp func
-// func (controller UserController) SignUp(c *gin.Context) {
-// 	var user models.User
-// 	// BadRequest (400)
-// 	if errBindJSON := c.BindJSON(&user); errBindJSON != nil {
-// 		helpers.ResponseBadRequestJSON(c, configs.EcParam, "BindJSON: "+errBindJSON.Error())
-// 		return
-// 	}
-// 	// Valida Invalid Entity (422)
-// 	if govalidator.IsByteLength(user.Username, 3, 15) == false {
-// 		helpers.ResponseErrorJSON(c, helpers.NewErrorDetail(382, "Please enter a valid username."))
-// 		return
-// 	}
-// 	if govalidator.IsEmail(user.Email) == false {
-// 		helpers.ResponseErrorJSON(c, helpers.NewErrorDetail(385, "Please enter a valid email address."))
-// 		return
-// 	}
-//
-// 	if exist, _ := controller.Service.CheckExistUsername(user.Username); exist == true {
-// 		helpers.ResponseErrorJSON(c, helpers.NewErrorDetail(376, "The login credential you provided belongs to an existing account"))
-// 		return
-// 	}
-//
-// 	if exist, _ := controller.Service.CheckExistEmail(user.Email); exist == true {
-// 		helpers.ResponseErrorJSON(c, helpers.NewErrorDetail(371, "The email address you provided belongs to an existing account"))
-// 		return
-// 	}
-//
-// 	user.Status = 0
-// 	activecode := helpers.RandStringBytes(6)
-// 	go func() {
-// 		if err := controller.Service.CreateEmailActive(user.Email, activecode, user.ID); err != nil {
-// 			fmt.Printf("\nCreate Email Active faile: %s", err.Error())
-// 		}
-//
-// 	}()
-// 	user.Status = 0
-// 	user.Followers = 0
-// 	user.Followings = 0
-// 	user.Posts = 0
-// 	userID, errUser := controller.Service.Create(&user) //needfix
-// 	if errUser != nil {
-// 		helpers.ResponseServerErrorJSON(c) //, 400, 387, "There was an error with your registration. Please try registering again: "+errUser.Error(), nil)
-// 		fmt.Printf("Create service: %s\n", errUser.Error())
-// 		return
-//
-// 	}
-// 	if userID < 0 {
-// 		helpers.ResponseServerErrorJSON(c) //, 400, 387, "There was an error with your registration. Please try registering again: "+errUser.Error(), nil)
-// 		fmt.Printf("Create service: userid <0")
-// 		return
-// 	}
-//
-// 	//pause func send mail active
-// 	go func() {
-// 		sender := helpers.NewSender(configs.MailAddress, configs.MailKey)
-// 		var email []string
-// 		email = append(email, user.Email)
-// 		linkActive := "<a href='localhost:8080/user/" + string(userID) + "?email_active=" + activecode + "'>Active</a>"
-// 		sender.SendMail(email, fmt.Sprintf("Active user %s on TLSEN", user.Username), fmt.Sprintf("Content-Type: text/html; charset=UTF-8\n\ncode: %s OR active via link: %s", activecode, linkActive))
-// 	}()
-//
-// 	helpers.ResponseCreatedJSON(c, 1, "Create user successful!", map[string]interface{}{"id": userID})
-// }
 
 // Create func
 func (controller UserController) Create(c *gin.Context) {
@@ -174,7 +108,11 @@ func (controller UserController) Create(c *gin.Context) {
 
 // Update func
 func (controller UserController) Update(c *gin.Context) {
-	userID, _ := strconv.ParseInt(c.Param("id"), 10, 64)
+	userID, errParseInt := strconv.ParseInt(c.Param("id"), 10, 64)
+	if errParseInt != nil {
+		helpers.ResponseBadRequestJSON(c, configs.EcParamUserID, "Invalid user id")
+		return
+	}
 	exist, errCheckExistUser := controller.Service.CheckExistUser(userID)
 	if errCheckExistUser != nil {
 		helpers.ResponseServerErrorJSON(c)
@@ -185,19 +123,33 @@ func (controller UserController) Update(c *gin.Context) {
 		helpers.ResponseNotFoundJSON(c, configs.EcAuthNoExistUser, "Don't exist user")
 		return
 	}
-	var user models.User
+
+	if myUserID, errGetUserIDFromToken := GetUserIDFromToken(c.Request.Header.Get("token")); myUserID != userID || errGetUserIDFromToken != nil {
+		helpers.ResponseAuthJSON(c, configs.EcPermission, "Permission error")
+		return
+	}
+
+	userOld, errGet := controller.Service.Get(userID)
+	if errGet != nil {
+		helpers.ResponseServerErrorJSON(c)
+		fmt.Printf("Get service: %s\n", errGet.Error())
+		return
+	}
+	var newUser models.InfoUser
 	// Valida BadRequest (400)
-	if errBindJSON := c.BindJSON(&user); errBindJSON != nil {
+	if errBindJSON := c.BindJSON(&newUser); errBindJSON != nil {
 		helpers.ResponseBadRequestJSON(c, configs.EcParam, "BindJSON: "+errBindJSON.Error())
 		return
 	}
-	// Valida Invalid Entity (422)
-	if _, errValidate := user.Validate(); errValidate != nil {
-		helpers.ResponseBadRequestJSON(c, configs.EcParam, "Validate: "+errValidate.Error())
-		return
+
+	errReplace := helpers.Replace(userOld, &newUser)
+	if errReplace != nil {
+		helpers.ResponseServerErrorJSON(c)
+		fmt.Printf("Replace helpers: %s\n", errReplace.Error())
 	}
+
 	// Valida se deu erro ao inserir (500)
-	userUpdate, errUpdate := controller.Service.Update(user)
+	userUpdate, errUpdate := controller.Service.Update(userID, newUser)
 	if errUpdate != nil {
 		helpers.ResponseServerErrorJSON(c)
 		fmt.Printf("Update service: %s\n", errUpdate.Error())

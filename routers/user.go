@@ -17,8 +17,5 @@ func AddRoutesUsers(r *gin.RouterGroup) {
 		routes.POST("", controller.Create)
 		routes.PUT("/:id", controller.Update)
 
-		// work with posts
-		// routes.POST("/:id/posts", controller.CreatePost)
-		// routes.GET("/:id/posts", controller.GetPosts)
 	}
 }

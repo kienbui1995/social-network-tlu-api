@@ -22,7 +22,8 @@ func InitRoutes() *gin.Engine {
 		{
 
 			AddRoutesUsers(v1)
-			// AddRoutesPosts(v1)
+			AddRouterSubscriptions(v1)
+			AddRoutesPosts(v1)
 			// AddRoutesGroups(v1)
 		}
 	}

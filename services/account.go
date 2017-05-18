@@ -17,16 +17,19 @@ type AccountServiceInterface interface {
 	Create(models.User) (int64, error)
 
 	GetDeviceByUserID(int64) ([]string, error)
-	CheckExistUsername(string) (bool, error)
-	CheckExistEmail(string) (bool, error)
-	CreateEmailActive(string, string, int64) error
+	CheckExistUsername(username string) (bool, error)
+	CheckExistEmail(email string) (bool, error)
+	CreateEmailActive(email string, activeCode string, userID int64) (bool, error)
 
-	CreateRecoverPassword(string, string) error
-	VerifyRecoveryCode(string, string) (int64, error)
-	AddUserRecoveryKey(int64, interface{}) error
-	RenewPassword(int64, string, string) (bool, error)
-	DeleteRecoveryProperty(int64) (bool, error)
-	CheckExistFacebookID(string) (int64, error)
+	CreateRecoverPassword(email string, recoveryCode string) (bool, error)
+	VerifyRecoveryCode(email string, recoveryCode string) (int64, error)
+	AddUserRecoveryKey(userID int64, recoveryKey string) error
+	RenewPassword(userID int64, recoveryKey string, newPassword string) (bool, error)
+	DeleteRecoveryProperty(userID int64) (bool, error)
+	CheckExistFacebookID(facebookID string) (int64, error)
+
+	ActiveByEmail(userID int64, activeCode string) (bool, error)
+	DeleteActiveCode(userID int64) (bool, error)
 }
 
 // accountService struct
@@ -152,14 +155,14 @@ func (service accountService) DeleteToken(accountid int64, token string) (bool, 
 // GetDeviceByUserID func to get deive list
 // int
 // []string error
-func (service accountService) GetDeviceByUserID(accountid int64) ([]string, error) {
+func (service accountService) GetDeviceByUserID(accountID int64) ([]string, error) {
 
 	stmt := `
 		MATCH (u:User)-[:LOGGED_IN]->(d:Device)
 		WHERE ID(u) = {accountid}
 		RETURN d.device AS device
 			`
-	params := map[string]interface{}{"accountid": accountid}
+	params := map[string]interface{}{"accountid": accountID}
 	res := []struct {
 		Device string `json:"device"`
 	}{}
@@ -251,6 +254,8 @@ func (service accountService) Create(user models.User) (int64, error) {
 }
 
 // CheckExistUsername
+// string
+// bool error
 func (service accountService) CheckExistUsername(username string) (bool, error) {
 	stmt := `
 	MATCH (u:User)
@@ -274,13 +279,18 @@ func (service accountService) CheckExistUsername(username string) (bool, error) 
 		return false, err
 	}
 
-	if len(res) > 0 && res[0].ID >= 0 {
-		return true, nil
+	if len(res) > 0 {
+		if res[0].ID >= 0 {
+			return true, nil
+		}
+		return false, errors.New("CheckExistUsername fail")
 	}
 	return false, nil
 }
 
 // CheckExistEmail func
+// string
+// bool error
 func (service accountService) CheckExistEmail(email string) (bool, error) {
 	stmt := `
 	MATCH (u:User)
@@ -304,61 +314,117 @@ func (service accountService) CheckExistEmail(email string) (bool, error) {
 		return false, err
 	}
 
-	if len(res) > 0 && res[0].ID >= 0 {
-		return true, nil
+	if len(res) > 0 {
+		if res[0].ID >= 0 {
+			return true, nil
+		}
+		return false, errors.New("CheckExistEmail fail")
+
 	}
 	return false, nil
 }
 
-//
-func (service accountService) CreateEmailActive(email string, activecode string, userid int64) error {
+//  CreateEmailActive func
+func (service accountService) CreateEmailActive(email string, activeCode string, userID int64) (bool, error) {
 	stmt := `
 	MATCH (u:User)
 	WHERE ID(u) = {userid} AND u.email = {email}
 	SET u.active_code = {activecode}
+	RETURN ID(u) AS id
 	`
 	params := neoism.Props{
-		"userid":     userid,
+		"userid":     userID,
 		"email":      email,
-		"activecode": activecode,
+		"activecode": activeCode,
 	}
-
+	var res []struct {
+		ID int64 `json:"id"`
+	}
 	cq := neoism.CypherQuery{
 		Statement:  stmt,
 		Parameters: params,
+		Result:     &res,
 	}
 	err := conn.Cypher(&cq)
 	if err != nil {
-		return err
+		return false, err
 	}
-	return nil
+	if len(res) > 0 {
+		if res[0].ID == userID {
+			return true, nil
+		}
+		return false, errors.New("CreateEmailActive fail")
+	}
+	return false, nil
+}
 
+//  DeleteActiveCode func
+func (service accountService) DeleteActiveCode(userID int64) (bool, error) {
+	stmt := `
+	MATCH (u:User)
+	WHERE ID(u) = {userid}
+	REMOVE u.active_code
+	SET u.status = 1
+	RETURN ID(u) AS id
+	`
+	params := neoism.Props{
+		"userid": userID,
+	}
+	var res []struct {
+		ID int64 `json:"id"`
+	}
+	cq := neoism.CypherQuery{
+		Statement:  stmt,
+		Parameters: params,
+		Result:     &res,
+	}
+	err := conn.Cypher(&cq)
+	if err != nil {
+		return false, err
+	}
+	if len(res) > 0 {
+		if res[0].ID == userID {
+			return true, nil
+		}
+		return false, errors.New("DeleteActiveCode fail")
+	}
+	return false, nil
 }
 
 //CreateRecoverPassword func
-func (service accountService) CreateRecoverPassword(email string, recoverycode string) error {
+func (service accountService) CreateRecoverPassword(email string, recoveryCode string) (bool, error) {
 	stmt := `
 	MATCH (u:User)
 	WHERE u.email = {email}
 	SET u.recovery_code = {recoverycode}, u.recovery_expired_at = TIMESTAMP()+1800000
+	RETURN ID(u) as id
 	`
 	params := neoism.Props{
 		"email":        email,
-		"recoverycode": recoverycode,
+		"recoverycode": recoveryCode,
+	}
+	var res []struct {
+		ID int64 `json:"id"`
 	}
 	cq := neoism.CypherQuery{
 		Statement:  stmt,
 		Parameters: params,
+		Result:     &res,
 	}
 	if err := conn.Cypher(&cq); err != nil {
-		return err
+		return false, err
 	}
-	return nil
-
+	if len(res) > 0 {
+		if res[0].ID >= 0 {
+			return true, nil
+		}
+		return false, errors.New("CreateRecoverPassword fail")
+	}
+	return false, nil
 }
 
 //VerifyRecoveryCode func
-func (service accountService) VerifyRecoveryCode(email string, recoverycode string) (int64, error) {
+func (service accountService) VerifyRecoveryCode(email string, recoveryCode string) (int64, error) {
 
 	stmt := `
 		MATCH (u:User)
@@ -367,7 +433,7 @@ func (service accountService) VerifyRecoveryCode(email string, recoverycode stri
 		`
 	params := neoism.Props{
 		"email":        email,
-		"recoverycode": recoverycode,
+		"recoverycode": recoveryCode,
 	}
 	res := []struct {
 		ID int64 `json:"id"`
@@ -381,20 +447,23 @@ func (service accountService) VerifyRecoveryCode(email string, recoverycode stri
 		return -1, err
 	}
 	if len(res) > 0 {
-		return res[0].ID, nil
+		if res[0].ID >= 0 {
+			return res[0].ID, nil
+		}
+		return -1, errors.New("VerifyRecoveryCode fail")
 	}
 	return -1, nil
-
 }
 
 //AddUserRecoveryKey func to add a property of user
-func (service accountService) AddUserRecoveryKey(userid int64, value interface{}) error {
+func (service accountService) AddUserRecoveryKey(userID int64, recoveryKey string) error {
 	stmt := `
-	MATCH(u:User) WHERE ID(u)= {userid} SET u.recovery_key = {value}
+	MATCH(u:User) WHERE ID(u)= {userid}
+	SET u.recovery_key = {value}
 	`
 	params := neoism.Props{
-		"userid": userid,
-		"value":  value,
+		"userid": userID,
+		"value":  recoveryKey,
 	}
 	cq := neoism.CypherQuery{
 		Statement:  stmt,
@@ -405,18 +474,20 @@ func (service accountService) AddUserRecoveryKey(userid int64, value interface{}
 }
 
 //RenewPassword func
-func (service accountService) RenewPassword(userid int64, recoverykey string, newpassword string) (bool, error) {
+func (service accountService) RenewPassword(userID int64, recoveryKey string, newPassword string) (bool, error) {
 	stmt := `
-	MATCH(u:User) WHERE ID(u)= {userid} AND u.recovery_key = {recoverykey} SET u.password = {newpassword}
+	MATCH(u:User)
+	WHERE ID(u)= {userid} AND u.recovery_key = {recoverykey}
+	SET u.password = {newpassword}
 	RETURN u.password as password
 	`
 	res := []struct {
 		Password string `json:"password"`
 	}{}
 	params := neoism.Props{
-		"userid":      userid,
-		"recoverykey": recoverykey,
-		"newpassword": newpassword,
+		"userid":      userID,
+		"recoverykey": recoveryKey,
+		"newpassword": newPassword,
 	}
 	cq := neoism.CypherQuery{
 		Statement:  stmt,
@@ -427,15 +498,30 @@ func (service accountService) RenewPassword(userid int64, recoverykey string, ne
 	if err != nil {
 		return false, err
 	}
-	if len(res) > 0 && res[0].Password == newpassword {
-		return true, nil
+	if len(res) > 0 {
+		if res[0].Password == newPassword {
+			return true, nil
+		}
+		return false, nil
 	}
-	return false, nil
+	return false, errors.New("RenewPassword fail")
 }
 
 //DeleteRecoveryProperty func
-func (service accountService) DeleteRecoveryProperty(userid int64) (bool, error) {
-	stmt := fmt.Sprintf("MATCH (u:User) WHERE ID(u) = %d REMOVE u.recovery_key, u.recovery_code, u.recovery_expired_at RETURN ID(u) as id, exists(u.recovery_key) as k, exists(u.recovery_code) as c,exists(u.recovery_expired_at) as e ", userid)
+func (service accountService) DeleteRecoveryProperty(userID int64) (bool, error) {
+	stmt := `
+	MATCH (u:User)
+	WHERE ID(u) = {userID}
+	REMOVE u.recovery_key, u.recovery_code, u.recovery_expired_at
+	RETURN
+		ID(u) AS id,
+		exists(u.recovery_key) AS k,
+		exists(u.recovery_code) AS c,
+		exists(u.recovery_expired_at) AS e
+		`
+	params := neoism.Props{
+		"userID": userID,
+	}
 	type resStruct struct {
 		ID int64 `json:"id"`
 		K  bool  `json:"k"`
@@ -444,33 +530,33 @@ func (service accountService) DeleteRecoveryProperty(userid int64) (bool, error)
 	}
 	res := []resStruct{}
 	cq := neoism.CypherQuery{
-		Statement: stmt,
-
-		Result: &res,
+		Statement:  stmt,
+		Parameters: params,
+		Result:     &res,
 	}
 	err := conn.Cypher(&cq)
 	if err != nil {
 		return false, err
 	}
 
-	if len(res) != 0 {
-		if res[0].ID == userid && res[0].K == true && res[0].C == true && res[0].E == true {
+	if len(res) > 0 {
+		if res[0].ID == userID && res[0].K == true && res[0].C == true && res[0].E == true {
 			return true, nil
 		}
 		return false, nil
 	}
-	return false, errors.New("No exist user")
+	return false, errors.New("DeleteRecoveryProperty fail")
 }
 
 //CheckExistFacebookID func
-func (service accountService) CheckExistFacebookID(facebookid string) (int64, error) {
+func (service accountService) CheckExistFacebookID(facebookID string) (int64, error) {
 	stmt := `
 	MATCH (u:User)
-	WHERE u.facebook_id = {facebookid}
+	WHERE u.facebook_id = {facebookID}
 	RETURN ID(u) AS id
 	`
 	params := neoism.Props{
-		"facebookid": facebookid,
+		"facebookID": facebookID,
 	}
 	type resStruct struct {
 		ID int64 `json:"id"`
@@ -487,7 +573,43 @@ func (service accountService) CheckExistFacebookID(facebookid string) (int64, er
 	}
 
 	if len(res) > 0 {
-		return res[0].ID, nil
+		if res[0].ID >= 0 {
+			return res[0].ID, nil
+		}
+		return -1, errors.New("CheckExistFacebookID fail")
 	}
 	return -1, nil
+}
+
+// ActiveByEmail func
+// int64 string
+// bool error
+func (service accountService) ActiveByEmail(userID int64, activeCode string) (bool, error) {
+	stmt := `
+	MATCH(u:User)
+	WHERE ID(u)= {userID}
+	RETURN u.active_code as active_code
+	`
+	res := []struct {
+		ActiveCode string `json:"active_code"`
+	}{}
+	params := neoism.Props{
+		"userID": userID,
+	}
+	cq := neoism.CypherQuery{
+		Statement:  stmt,
+		Parameters: params,
+		Result:     &res,
+	}
+	err := conn.Cypher(&cq)
+	if err != nil {
+		return false, err
+	}
+	if len(res) > 0 {
+		if res[0].ActiveCode == activeCode {
+			return true, nil
+		}
+		return false, nil
+	}
+	return false, errors.New("ActiveByEmail fail")
 }

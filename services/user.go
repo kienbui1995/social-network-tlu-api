@@ -14,7 +14,7 @@ type UserServiceInterface interface {
 	Get(int64) (models.User, error)
 	Delete(int64) (bool, error)
 	Create(models.User) (int64, error)
-	Update(models.User) (models.User, error)
+	Update(userID int64, newUser models.InfoUser) (models.User, error)
 	CheckExistUsername(string) (bool, error)
 	CheckExistEmail(string) (bool, error)
 	CreateEmailActive(string, string, int64) error
@@ -31,7 +31,6 @@ func NewUserService() userService {
 
 // GetAll func
 func (service userService) GetAll(params helpers.ParamsGetAll) (models.PublicUsers, error) {
-
 	stmt := `
 	MATCH (u:User)
 	return u {id:ID(u), .*}  AS user
@@ -197,39 +196,37 @@ func (service userService) Create(user models.User) (int64, error) {
 }
 
 // Update func
-func (service userService) Update(p models.User) (models.User, error) {
-	// record := models.User{
-	// 	Name:             p.Name,
-	// 	CityName:         p.CityName,
-	// 	CompanyName:      p.CompanyName,
-	// 	Address:          p.Address,
-	// 	Number:           p.Number,
-	// 	Complement:       p.Complement,
-	// 	District:         p.District,
-	// 	Zip:              p.Zip,
-	// 	BirthDate:        p.BirthDate,
-	// 	Cpf:              p.Cpf,
-	// 	Rg:               p.Rg,
-	// 	Gender:           p.Gender,
-	// 	BusinessPhone:    p.BusinessPhone,
-	// 	HomePhone:        p.HomePhone,
-	// 	MobilePhone:      p.MobilePhone,
-	// 	Cnpj:             p.Cnpj,
-	// 	StateInscription: p.StateInscription,
-	// 	Phone:            p.Phone,
-	// 	Fax:              p.Fax,
-	// 	Email:            p.Email,
-	// 	Website:          p.Website,
-	// 	Observations:     p.Observations,
-	// }
-	//
-	// err := db.Model(&models.Person{}).
-	// 	Where("uuid = ?", p.UUID).
-	// 	Updates(&record).Error
-	//
-	// if err != nil {
-	// 	log.Print(err.Error())
-	// }
+func (service userService) Update(userID int64, newUser models.InfoUser) (models.User, error) {
+	stmt := `
+	MATCH (u:User)
+	WHERE ID(u) = {userid}
+	SET u += {p}
+	RETURN properties(u) AS user
+	`
+	params := neoism.Props{
+		"userid": userID,
+		"p":      newUser,
+	}
+
+	res := []struct {
+		User models.User `json:"user"`
+	}{}
+	cq := neoism.CypherQuery{
+		Statement:  stmt,
+		Parameters: params,
+		Result:     &res,
+	}
+	err := conn.Cypher(&cq)
+	if err != nil {
+		return models.User{}, err
+	}
+
+	if len(res) > 0 {
+		if res[0].User.ID >= 0 {
+			return res[0].User, nil
+		}
+		return models.User{}, nil
+	}
 	return models.User{}, nil
 }
 

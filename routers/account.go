@@ -20,4 +20,9 @@ func AddRoutesAccounts(r *gin.RouterGroup) {
 		routes.PUT("/renew_password", controller.RenewPassword)
 
 	}
+	account := r.Group("/account")
+	{
+		account.GET("/:id/active", controller.ActiveByEmail)
+
+	}
 }

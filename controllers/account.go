@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/asaskevich/govalidator"
 	"github.com/gin-gonic/gin"
@@ -46,13 +47,6 @@ func (controller AccountController) SignUp(c *gin.Context) {
 		return
 	}
 
-	activecode := helpers.RandStringBytes(6)
-	go func() {
-		if err := controller.Service.CreateEmailActive(user.Email, activecode, user.ID); err != nil {
-			fmt.Printf("\nCreate Email Active faile: %s", err.Error())
-		}
-
-	}()
 	user.Status = 0
 	user.Followers = 0
 	user.Followings = 0
@@ -61,7 +55,7 @@ func (controller AccountController) SignUp(c *gin.Context) {
 		helpers.ResponseBadRequestJSON(c, configs.EcUsersRegisterAddUserFailed, "ValidateStruct: "+errValidateStruct.Error())
 		return
 	}
-	userID, errUser := controller.Service.Create(user) //needfix
+	userID, errUser := controller.Service.Create(user)
 	if errUser != nil {
 		helpers.ResponseServerErrorJSON(c) //, 400, 387, "There was an error with your registration. Please try registering again: "+errUser.Error(), nil)
 		fmt.Printf("Create service: %s\n", errUser.Error())
@@ -74,12 +68,29 @@ func (controller AccountController) SignUp(c *gin.Context) {
 		return
 	}
 
+	// activecode := helpers.RandStringBytes(6)
+	// go func() {
+	// 	if err := controller.Service.CreateEmailActive(user.Email, activecode, user.ID); err != nil {
+	// 		fmt.Printf("\nCreate Email Active faile: %s", err.Error())
+	// 	}
+	//
+	// }()
+
 	//pause func send mail active
 	go func() {
+		activecode := helpers.RandStringBytes(6)
+		created, errCreateEmailActive := controller.Service.CreateEmailActive(user.Email, activecode, user.ID)
+		if errCreateEmailActive != nil {
+			fmt.Printf("\nCreateEmailActive: %s\n", errCreateEmailActive.Error())
+		}
+
+		if created != true {
+			fmt.Printf("CreateEmailActive: don't create")
+		}
 		sender := helpers.NewSender(configs.MailAddress, configs.MailKey)
 		var email []string
 		email = append(email, user.Email)
-		linkActive := "<a href='localhost:8080/user/" + string(userID) + "?email_active=" + activecode + "'>Active</a>"
+		linkActive := "<a href='tlu.cloudapp.net:8080/activation?use_id=" + string(userID) + "&active_code=" + activecode + "'>Active</a>"
 		sender.SendMail(email, fmt.Sprintf("Active user %s on TLSEN", user.Username), fmt.Sprintf("Content-Type: text/html; charset=UTF-8\n\ncode: %s OR active via link: %s", activecode, linkActive))
 	}()
 
@@ -228,9 +239,15 @@ func (controller AccountController) ForgotPassword(c *gin.Context) {
 			RecoveryCode string `json:"recovery_code"`
 		}
 		recoverpass := RecoverPassword{Email: json.Email, RecoveryCode: helpers.RandNumberBytes(6)}
-		if errCreateRecoverPassword := controller.Service.CreateRecoverPassword(recoverpass.Email, recoverpass.RecoveryCode); errCreateRecoverPassword != nil {
+		created, errCreateRecoverPassword := controller.Service.CreateRecoverPassword(recoverpass.Email, recoverpass.RecoveryCode)
+		if errCreateRecoverPassword != nil {
 			helpers.ResponseServerErrorJSON(c)
 			fmt.Printf("CreateRecoverPassword service: %s\n", errCreateRecoverPassword.Error())
+			return
+		}
+		if created != true {
+			helpers.ResponseServerErrorJSON(c)
+			fmt.Printf("CreateRecoverPassword service: don't create\n")
 			return
 		}
 		sender := helpers.NewSender(configs.MailAddress, configs.MailKey)
@@ -331,6 +348,40 @@ func (controller AccountController) RenewPassword(c *gin.Context) {
 	} else if renew != true {
 		helpers.ResponseServerErrorJSON(c)
 		fmt.Printf("RenewPassword service: renew false")
+	}
+
+}
+
+// ActiveByEmail func
+func (controller AccountController) ActiveByEmail(c *gin.Context) {
+	accountID, _ := strconv.ParseInt(c.DefaultQuery("id", "-1"), 10, 64)
+	activeCode := c.Query("active_code")
+
+	if accountID < 0 || len(activeCode) == 0 {
+		helpers.ResponseBadRequestJSON(c, configs.EcParamMissingField, "Missing a few fields")
+		return
+	}
+
+	actived, errActiveByEmail := controller.Service.ActiveByEmail(accountID, activeCode)
+	if errActiveByEmail == nil && actived == true {
+		helpers.ResponseJSON(c, 200, 1, "Active account successful", nil)
+
+		go func() {
+			deleted, errDeleteActiveCode := controller.Service.DeleteActiveCode(accountID)
+			if errDeleteActiveCode != nil {
+				fmt.Printf("DeleteActiveCode service: " + errDeleteActiveCode.Error())
+			}
+			if deleted != true {
+				fmt.Printf("DeleteActiveCode service: Don't delete")
+			}
+		}()
+
+	} else if errActiveByEmail != nil {
+		helpers.ResponseServerErrorJSON(c)
+		fmt.Printf("ActiveByEmail service: %s\n", errActiveByEmail.Error())
+	} else if actived != true {
+		helpers.ResponseServerErrorJSON(c)
+		fmt.Printf("ActiveByEmail service: active false")
 	}
 
 }
