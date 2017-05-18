@@ -32,7 +32,7 @@ type PostServiceInterface interface {
 	CheckPostInteractivePermission(postID int64, userID int64) (bool, error)
 }
 
-// UserService struct
+// postService struct
 type postService struct{}
 
 // NewPostService to constructor

@@ -48,7 +48,7 @@ const (
 const (
 	EcSuccess                           = 1   //	Success
 	EcNoExistObject                     = 2   //	No exist this object.
-	EcExisObject                        = 3   // Exist this object
+	EcExisObject                        = 3   //  Exist this object
 	EcParam                             = 100 //	Invalid parameter
 	EcParamMissingField                 = 101 //	Missing a few fields.
 	EcParamUserID                       = 110 //	Invalid user id
@@ -60,7 +60,9 @@ const (
 	EcParamAccessToken                  = 190 //	Invalid OAuth 2.0 Access Token
 	EcPermission                        = 200 //	Permissions error
 	EcPermissionUser                    = 210 //	User not visible
+	ECPermissionStatus                  = 220 //  Status not visible
 	EcPermissionPhoto                   = 221 //	Photo not visible
+	EcPermissionPost                    = 222 //  Post not visible
 	EcPermissionMessage                 = 230 //	Permissions disallow message to user
 	EcEdit                              = 300 //	Edit failure
 	EcEditUserData                      = 310 //	User data edit failure

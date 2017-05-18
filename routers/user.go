@@ -18,4 +18,5 @@ func AddRoutesUsers(r *gin.RouterGroup) {
 		routes.PUT("/:id", controller.Update)
 
 	}
+	r.GET("/find_user", controller.Find)
 }
