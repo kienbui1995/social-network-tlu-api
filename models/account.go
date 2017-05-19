@@ -7,7 +7,7 @@ import (
 //Account struct
 type Account struct {
 	ID       int64  `json:"id"`
-	Username string `json:"username" valid:"required,length(8|32)"`
+	Username string `json:"username" valid:"required,length(6|32)"`
 	Password string `json:"password" valid:"required,length(8|32)"`
 	Role     int    `json:"role"`
 	Device   string `json:"device" valid:"required"`

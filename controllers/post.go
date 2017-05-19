@@ -35,6 +35,10 @@ func (controller PostController) GetAll(c *gin.Context) {
 	params.Skip, _ = strconv.Atoi(c.DefaultQuery("skip", configs.SSkip))
 	params.Limit, _ = strconv.Atoi(c.DefaultQuery("limit", configs.SLimit))
 	params.Type = c.DefaultQuery("type", configs.SPost)
+	if (params.Type != configs.SPostPhoto && params.Type != configs.SPostStatus) && params.Type != configs.SPost {
+		helpers.ResponseBadRequestJSON(c, configs.EcParam, "Invalid parameter: type")
+		return
+	}
 	params.Sort = c.DefaultQuery("sort", configs.SSort)
 	params.Sort, _ = helpers.ConvertSort(params.Sort)
 	users, errGetAll := controller.Service.GetAll(params, userID, myUserID)
