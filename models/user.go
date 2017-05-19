@@ -71,12 +71,18 @@ type UserObject struct {
 
 //UserFollowObject struct for a sub user for get all user; search user, list user any where
 type UserFollowObject struct {
-	UserObject
-	IsFollowed bool `json:"is_followed"`
+	UserID     int64  `json:"id"`
+	Username   string `json:"username"`
+	FullName   string `json:"full_name"`
+	Avatar     string `json:"avatar"`
+	IsFollowed bool   `json:"is_followed"`
 }
 
 //UserLikedObject struct for a user liked things
 type UserLikedObject struct {
-	UserObject
-	LikedAt int64 `json:"liked_at"`
+	UserID   int64  `json:"id"`
+	Username string `json:"username"`
+	FullName string `json:"full_name"`
+	Avatar   string `json:"avatar"`
+	LikedAt  int64  `json:"liked_at"`
 }

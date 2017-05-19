@@ -120,7 +120,7 @@ func (controller CommentController) Create(c *gin.Context) {
 	if json.Status == 0 {
 		json.Status = 1
 	}
-
+	json.UserID = myUserID
 	commentID, errCreate := controller.Service.Create(json, postID)
 	if errCreate == nil && commentID >= 0 {
 		helpers.ResponseSuccessJSON(c, 1, "Create comment successful", map[string]interface{}{"id": commentID})
