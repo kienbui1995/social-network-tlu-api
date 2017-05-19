@@ -20,7 +20,7 @@ func InitRoutes() *gin.Engine {
 
 		v1.Use(middlewares.AuthRequired())
 		{
-
+			AddRouterHome(v1)
 			AddRoutesUsers(v1)
 			AddRouterSubscriptions(v1)
 			AddRoutesPosts(v1)

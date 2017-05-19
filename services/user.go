@@ -19,7 +19,6 @@ type UserServiceInterface interface {
 	CheckExistEmail(string) (bool, error)
 	CreateEmailActive(string, string, int64) error
 	CheckExistUser(int64) (bool, error)
-	FindUserByUsernameAndFullName(name string, myUserID int64) ([]models.UserFollowObject, error)
 }
 
 // UserService struct
@@ -346,40 +345,4 @@ func (service userService) CheckExistUser(id int64) (bool, error) {
 		return false, nil
 	}
 	return false, errors.New("CheckExistUser fail")
-}
-
-// FindUserByUsernameAndFullName func
-// string int64
-// []models.UserFollowObject error
-func (service userService) FindUserByUsernameAndFullName(name string, myUserID int64) ([]models.UserFollowObject, error) {
-	stmt := `
-		 MATCH(a:User) where ID(a)={userid}
-		 OPTIONAL MATCH(u:User)
-		 WHERE toLower(u.username) CONTAINS toLower({s})  OR toLower(u.full_name)  CONTAINS toLower({s})
-		 RETURN
-		 	ID(u) as id, u.username as username,
-			u.avatar as avatar,
-			u.full_name as full_name,
-		  exists((a)-[:FOLLOW]->(u)) as is_followed
-	`
-	res := []models.UserFollowObject{}
-	params := neoism.Props{
-		"userid": myUserID,
-		"s":      name,
-	}
-	cq := neoism.CypherQuery{
-		Statement:  stmt,
-		Parameters: params,
-		Result:     &res,
-	}
-	err := conn.Cypher(&cq)
-	if err != nil {
-		return nil, err
-	}
-	if len(res) > 0 {
-		if res[0].UserID >= 0 {
-			return res, nil
-		}
-	}
-	return nil, nil
 }

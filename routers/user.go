@@ -16,7 +16,5 @@ func AddRoutesUsers(r *gin.RouterGroup) {
 		routes.DELETE("/:id", controller.Delete)
 		routes.POST("", controller.Create)
 		routes.PUT("/:id", controller.Update)
-
 	}
-	r.GET("/find_user", controller.Find)
 }

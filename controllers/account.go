@@ -354,14 +354,17 @@ func (controller AccountController) RenewPassword(c *gin.Context) {
 
 // ActiveByEmail func
 func (controller AccountController) ActiveByEmail(c *gin.Context) {
-	accountID, _ := strconv.ParseInt(c.DefaultQuery("id", "-1"), 10, 64)
+	accountID, _ := strconv.ParseInt(c.Param("id"), 10, 64)
 	activeCode := c.Query("active_code")
 
 	if accountID < 0 || len(activeCode) == 0 {
 		helpers.ResponseBadRequestJSON(c, configs.EcParamMissingField, "Missing a few fields")
 		return
 	}
-
+	if exist, _ := services.NewUserService().CheckExistUser(accountID); exist != true {
+		helpers.ResponseBadRequestJSON(c, configs.EcAuthNoExistUser, "No exist user")
+		return
+	}
 	actived, errActiveByEmail := controller.Service.ActiveByEmail(accountID, activeCode)
 	if errActiveByEmail == nil && actived == true {
 		helpers.ResponseJSON(c, 200, 1, "Active account successful", nil)
@@ -380,8 +383,8 @@ func (controller AccountController) ActiveByEmail(c *gin.Context) {
 		helpers.ResponseServerErrorJSON(c)
 		fmt.Printf("ActiveByEmail service: %s\n", errActiveByEmail.Error())
 	} else if actived != true {
-		helpers.ResponseServerErrorJSON(c)
-		fmt.Printf("ActiveByEmail service: active false")
+		helpers.ResponseJSON(c, 200, 1, "active false", nil)
+		return
 	}
 
 }

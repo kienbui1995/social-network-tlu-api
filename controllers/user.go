@@ -158,27 +158,3 @@ func (controller UserController) Update(c *gin.Context) {
 
 	helpers.ResponseSuccessJSON(c, 1, "Update user successful", userUpdate)
 }
-
-// Find func
-func (controller UserController) Find(c *gin.Context) {
-	name := c.Query("name")
-	if len(name) == 0 {
-		helpers.ResponseBadRequestJSON(c, configs.EcParamMissingField, "Missing a few fields: name")
-		return
-	}
-
-	myUserID, errGetUserIDFromToken := GetUserIDFromToken(c.Request.Header.Get("token"))
-	if errGetUserIDFromToken != nil {
-		helpers.ResponseAuthJSON(c, configs.EcPermission, "Permission error")
-		return
-	}
-
-	users, errFindUserByUsernameAndFullName := controller.Service.FindUserByUsernameAndFullName(name, myUserID)
-	if errFindUserByUsernameAndFullName != nil {
-		helpers.ResponseServerErrorJSON(c)
-		fmt.Printf("ERROR FindUserByUsernameAndFullName: %s", errFindUserByUsernameAndFullName.Error())
-	} else {
-		helpers.ResponseEntityListJSON(c, 1, "User list found", users, nil, len(users))
-	}
-
-}
