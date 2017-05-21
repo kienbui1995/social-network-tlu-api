@@ -5,7 +5,6 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
-	"github.com/jinzhu/copier"
 	"github.com/kienbui1995/social-network-tlu-api/configs"
 	"github.com/kienbui1995/social-network-tlu-api/helpers"
 	"github.com/kienbui1995/social-network-tlu-api/models"
@@ -186,7 +185,9 @@ func (controller PostController) Create(c *gin.Context) {
 		action = " đăng ảnh"
 	}
 	post := models.Post{}
-	copier.Copy(post, json)
+	helpers.Replace(json, &post)
+	fmt.Printf("json: %v\n", json)
+	fmt.Printf("json: %v\n", post)
 	postID, errCreate := controller.Service.Create(post, userID)
 	if errCreate == nil && postID >= 0 {
 		helpers.ResponseSuccessJSON(c, 1, "Create user post successful", map[string]interface{}{"id": postID})
@@ -337,7 +338,7 @@ func (controller PostController) CreateLike(c *gin.Context) {
 				ObjectID:   post.PostID,
 				ObjectType: "post",
 				Title:      "@" + userLiked.Username + " thích trạng thái của bạn",
-				Message:    "",
+				Message:    post.Message,
 			}
 			PushTest(notify)
 		}()
@@ -357,59 +358,57 @@ func (controller PostController) DeleteLike(c *gin.Context) {
 	postID, errParseInt := strconv.ParseInt(c.Param("id"), 10, 64)
 	if errParseInt != nil {
 		helpers.ResponseBadRequestJSON(c, configs.EcParam, "Invalid post id")
-	} else {
-
-		//check exist
-		exist, errCheckExistPost := controller.Service.CheckExistPost(postID)
-		if errCheckExistPost != nil {
-			helpers.ResponseServerErrorJSON(c)
-			fmt.Printf("CheckExistPost service: %s\n", errCheckExistPost.Error())
-			return
-		}
-		if exist != true {
-			helpers.ResponseBadRequestJSON(c, configs.EcNoExistObject, "No exist this object: post")
-			return
-		}
-
-		//check permisson
-		myUserID, errGetUserIDFromToken := GetUserIDFromToken(c.Request.Header.Get("token"))
-		if errGetUserIDFromToken != nil {
-			helpers.ResponseAuthJSON(c, 200, "Permissions error")
-			return
-		}
-
-		// check liked
-		if liked, _ := controller.Service.CheckExistLike(postID, myUserID); liked != true {
-			helpers.ResponseBadRequestJSON(c, 3, "Exist this object: Likes")
-			return
-		}
-
-		likes, errDeleteLike := controller.Service.DeleteLike(postID, myUserID)
-		if errDeleteLike == nil && likes >= 0 {
-			helpers.ResponseSuccessJSON(c, 1, "Unlike successful", map[string]int{"likes": likes})
-
-			// auto Decrease post Likes
-			go func() {
-				ok, errDecreaseLikes := controller.Service.DecreaseLikes(postID)
-				if errDecreaseLikes != nil {
-					fmt.Printf("DecreaseLikes service: %s\n", errDecreaseLikes.Error())
-				}
-				if ok != true {
-					fmt.Printf("DecreaseLikes service: don't decrease\n")
-				}
-			}()
-
-			return
-		}
-
-		helpers.ResponseServerErrorJSON(c)
-		if errDeleteLike != nil {
-			fmt.Printf("DeletePostLike services: %s\n", errDeleteLike.Error())
-		} else {
-			fmt.Printf("DeletePostLike services: Don't Delete Like\n")
-		}
-
+		return
 	}
+	//check exist
+	exist, errCheckExistPost := controller.Service.CheckExistPost(postID)
+	if errCheckExistPost != nil {
+		helpers.ResponseServerErrorJSON(c)
+		fmt.Printf("CheckExistPost service: %s\n", errCheckExistPost.Error())
+		return
+	}
+	if exist != true {
+		helpers.ResponseBadRequestJSON(c, configs.EcNoExistObject, "No exist this object: post")
+		return
+	}
+
+	//check permisson
+	myUserID, errGetUserIDFromToken := GetUserIDFromToken(c.Request.Header.Get("token"))
+	if errGetUserIDFromToken != nil {
+		helpers.ResponseAuthJSON(c, 200, "Permissions error")
+		return
+	}
+
+	// check liked
+	if liked, _ := controller.Service.CheckExistLike(postID, myUserID); liked != true {
+		helpers.ResponseNotFoundJSON(c, configs.EcNoExistObject, "No Exist this object: Likes")
+		return
+	}
+
+	likes, errDeleteLike := controller.Service.DeleteLike(postID, myUserID)
+	if errDeleteLike == nil && likes >= 0 {
+		helpers.ResponseSuccessJSON(c, 1, "Unlike successful", map[string]int{"likes": likes})
+
+		// auto Decrease post Likes
+		go func() {
+			ok, errDecreaseLikes := controller.Service.DecreaseLikes(postID)
+			if errDecreaseLikes != nil {
+				fmt.Printf("DecreaseLikes service: %s\n", errDecreaseLikes.Error())
+			}
+			if ok != true {
+				fmt.Printf("DecreaseLikes service: don't decrease\n")
+			}
+		}()
+		return
+	}
+
+	helpers.ResponseServerErrorJSON(c)
+	if errDeleteLike != nil {
+		fmt.Printf("DeletePostLike services: %s\n", errDeleteLike.Error())
+	} else {
+		fmt.Printf("DeletePostLike services: Don't Delete Like\n")
+	}
+
 }
 
 // GetLikes func
