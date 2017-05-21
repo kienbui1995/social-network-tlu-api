@@ -11,7 +11,7 @@ import (
 // UserServiceInterface include method list
 type UserServiceInterface interface {
 	GetAll(helpers.ParamsGetAll) (models.PublicUsers, error)
-	Get(int64) (models.User, error)
+	Get(int64) (models.PublicUser, error)
 	Delete(int64) (bool, error)
 	Create(models.User) (int64, error)
 	Update(userID int64, newUser models.InfoUser) (models.User, error)
@@ -75,24 +75,19 @@ func (service userService) GetAll(params helpers.ParamsGetAll) (models.PublicUse
 // Get func
 // int64
 // models.User error
-func (service userService) Get(id int64) (models.User, error) {
-	var user = models.User{}
+func (service userService) Get(id int64) (models.PublicUser, error) {
+	var user = models.PublicUser{}
 	stmt := `
 		MATCH (u:User)
 		WHERE ID(u) = {id}
 		RETURN
-		u.avatar as avatar, u.about as about, u.birthday as birthday, u.gender as gender, u.cover as cover,
-		ID(u) as id,
-		u.username as username,
-		u.full_name as full_name, u.first_name as first_name, u.last_name as last_name,
-		u.email as email, u.status as Status,
-		u.followers as followers, u.followings as followings, u.posts as posts,
-		u.created_at as created_at, u.updated_at as updated_at
-		LIMIT 25;
+			u{id:ID(u), .*} as user
 		`
 	params := neoism.Props{"id": id}
 
-	res := []models.User{}
+	res := []struct {
+		User models.PublicUser `json:"user"`
+	}{}
 	cq := neoism.CypherQuery{
 		Statement:  stmt,
 		Parameters: params,
@@ -105,7 +100,7 @@ func (service userService) Get(id int64) (models.User, error) {
 	}
 	if len(res) == 1 {
 
-		return res[0], nil
+		return res[0].User, nil
 	} else if len(res) > 1 {
 		return user, errors.New("Many User")
 	} else {
