@@ -37,11 +37,31 @@ const (
 	GroupObject   = 6
 )
 
-// Const privacy
+// Const privacy post
 const (
 	Public           = 1
 	ShareToFollowers = 2
 	Private          = 3
+)
+
+// Const privacy group
+const (
+	// All users within the community can join to this group
+	IPublicGroup = 1
+	SPublicGroup = "public"
+	// Only members of the group can see posts to this group, need request to injoin group
+	IPrivateGroup = 2
+	SPrivateGroup = "private"
+)
+
+// Const status group membership request
+const (
+	IPending  = 1
+	SPending  = "pending"
+	IAccepted = 2
+	SAccepted = "accepted"
+	IDeclined = 3
+	SDeclined = "declined"
 )
 
 // ErrorCode Table

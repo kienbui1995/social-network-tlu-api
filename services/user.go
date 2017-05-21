@@ -27,9 +27,12 @@ type userService struct{}
 // NewUserService to constructor
 func NewUserService() userService {
 	return userService{}
+
 }
 
 // GetAll func
+// helpers.ParamsGetAll
+// models.PublicUsers error
 func (service userService) GetAll(params helpers.ParamsGetAll) (models.PublicUsers, error) {
 	stmt := `
 	MATCH (u:User)
@@ -70,6 +73,8 @@ func (service userService) GetAll(params helpers.ParamsGetAll) (models.PublicUse
 }
 
 // Get func
+// int64
+// models.User error
 func (service userService) Get(id int64) (models.User, error) {
 	var user = models.User{}
 	stmt := `
@@ -109,6 +114,8 @@ func (service userService) Get(id int64) (models.User, error) {
 }
 
 // Delete func
+// int64
+// bool error
 func (service userService) Delete(id int64) (bool, error) {
 	stmt := `
 		MATCH (u:User) WHERE ID(u) = {id}
@@ -129,6 +136,8 @@ func (service userService) Delete(id int64) (bool, error) {
 }
 
 // Create func
+// models.User
+// int64 error
 func (service userService) Create(user models.User) (int64, error) {
 	stmt := `
 	Create (u:User{
@@ -142,6 +151,7 @@ func (service userService) Create(user models.User) (int64, error) {
 		about: {about},
 		gender: {gender},
 		birthday: {birthday},
+		large_avatar: {large_avatar},
 		avatar: {avatar},
 		cover: {cover},
 		status: {status},
@@ -165,6 +175,7 @@ func (service userService) Create(user models.User) (int64, error) {
 		"about":         user.About,
 		"gender":        user.Gender,
 		"birthday":      user.Birthday,
+		"large_avatar":  user.LargeAvatar,
 		"avatar":        user.Avatar,
 		"cover":         user.Cover,
 		"status":        user.Status,
@@ -196,11 +207,13 @@ func (service userService) Create(user models.User) (int64, error) {
 }
 
 // Update func
+// int64 models.InfoUser
+// models.User error
 func (service userService) Update(userID int64, newUser models.InfoUser) (models.User, error) {
 	stmt := `
 	MATCH (u:User)
 	WHERE ID(u) = {userid}
-	SET u += {p}
+	SET u += {p}, u.updated_at = TIMESTAMP()
 	RETURN properties(u) AS user
 	`
 	params := neoism.Props{
@@ -225,12 +238,13 @@ func (service userService) Update(userID int64, newUser models.InfoUser) (models
 		if res[0].User.ID >= 0 {
 			return res[0].User, nil
 		}
-		return models.User{}, nil
 	}
 	return models.User{}, nil
 }
 
 // CheckExistUsername
+// string
+// bool error
 func (service userService) CheckExistUsername(username string) (bool, error) {
 	stmt := `
 	MATCH (u:User)
@@ -261,6 +275,8 @@ func (service userService) CheckExistUsername(username string) (bool, error) {
 }
 
 // CheckExistEmail func
+// string
+// bool error
 func (service userService) CheckExistEmail(email string) (bool, error) {
 	stmt := `
 	MATCH (u:User)
@@ -291,6 +307,8 @@ func (service userService) CheckExistEmail(email string) (bool, error) {
 }
 
 // CreateEmailActive
+// string string int64
+// error
 func (service userService) CreateEmailActive(email string, activecode string, userid int64) error {
 	stmt := `
 	MATCH (u:User)
@@ -315,7 +333,8 @@ func (service userService) CreateEmailActive(email string, activecode string, us
 }
 
 // 	CheckExistUser
-
+// int64
+// bool error
 func (service userService) CheckExistUser(id int64) (bool, error) {
 	stmt := `
 	MATCH (u:User)

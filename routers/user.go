@@ -12,9 +12,9 @@ func AddRoutesUsers(r *gin.RouterGroup) {
 	routes := r.Group("/users")
 	{
 		routes.GET("", controller.GetAll)
+		routes.POST("", controller.Create)
 		routes.GET("/:id", controller.Get)
 		routes.DELETE("/:id", controller.Delete)
-		routes.POST("", controller.Create)
 		routes.PUT("/:id", controller.Update)
 	}
 }

@@ -12,6 +12,7 @@ type User struct {
 	MiddleName    string `json:"middle_name,omitempty"`
 	LastName      string `json:"last_name,omitempty"`
 	Birthday      string `json:"birthday,omitempty"`
+	LargeAvatar   string `json:"large_avatar,omitempty"`
 	Avatar        string `json:"avatar,omitempty"`
 	Cover         string `json:"cover,omitempty"`
 	About         string `json:"about,omitempty"`
@@ -44,12 +45,13 @@ func (u User) Validate() (bool, error) {
 
 // InfoUser struct
 type InfoUser struct {
-	Password      string `json:"password,omitempty" valid:"length(7|32)"`
+	Password      string `json:"password,omitempty"`
 	FullName      string `json:"full_name,omitempty"`
 	FirstName     string `json:"first_name,omitempty"`
 	MiddleName    string `json:"middle_name,omitempty"`
 	LastName      string `json:"last_name,omitempty"`
 	Birthday      string `json:"birthday,omitempty"`
+	LargeAvatar   string `json:"large_avatar,omitempty"`
 	Avatar        string `json:"avatar,omitempty"`
 	Cover         string `json:"cover,omitempty"`
 	About         string `json:"about,omitempty"`
@@ -85,4 +87,14 @@ type UserLikedObject struct {
 	FullName string `json:"full_name"`
 	Avatar   string `json:"avatar"`
 	LikedAt  int64  `json:"liked_at"`
+}
+
+//UserJoinedObject struct for a user joined group
+type UserJoinedObject struct {
+	ID       int64      `json:"id"`
+	Username string     `json:"username"`
+	FullName string     `json:"full_name"`
+	Avatar   string     `json:"avatar"`
+	JoinedAt int64      `json:"joined_at"`
+	JoinedBy UserObject `json:"joined_by,omitempty"`
 }
