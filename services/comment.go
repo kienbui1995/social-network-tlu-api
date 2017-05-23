@@ -1,6 +1,7 @@
 package services
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/jmcvetta/neoism"
@@ -14,6 +15,7 @@ type CommentServiceInterface interface {
 	GetAll(postID int64, params helpers.ParamsGetAll, myUserID int64) ([]models.Comment, error)
 	Get(commentID int64) (models.Comment, error)
 	Create(comment models.Comment, postID int64) (int64, error)
+	CreateWithMention(comment models.Comment, postID int64) (int64, error)
 	Delete(commentID int64) (bool, error)
 	Update(comment models.Comment) (bool, error)
 	CheckExistComment(commentID int64) (bool, error)
@@ -85,8 +87,7 @@ func (service commentService) Get(commentID int64) (models.Comment, error) {
 	WHERE ID(c) = {commentID}
 	RETURN
 		ID(c) AS id, c.message AS message, c.created_at AS created_at, c.updated_at AS updated_at ,c.status AS status,
-		u{id:ID(u),.username, .full_name, .avatar} AS owner,
-		true AS can_report
+		u{id:ID(u),.username, .full_name, .avatar} AS owner, c.mentions
 	`
 	params := map[string]interface{}{
 		"commentID": commentID,
@@ -114,9 +115,17 @@ func (service commentService) Get(commentID int64) (models.Comment, error) {
 // models.Comment int64
 // int64 error
 func (service commentService) Create(comment models.Comment, postID int64) (int64, error) {
+	var mentions []string
+	for _, mention := range comment.Mentions {
+		b, _ := json.Marshal(mention)
+		s := string(b)
+		mentions = append(mentions, s)
+	}
+
 	p := neoism.Props{
-		"message": comment.Message,
-		"status":  comment.Status,
+		"message":  comment.Message,
+		"status":   comment.Status,
+		"mentions": mentions,
 	}
 	params := map[string]interface{}{
 		"props":  p,
@@ -129,6 +138,71 @@ func (service commentService) Create(comment models.Comment, postID int64) (int6
 	// 		ids = append(ids, comment.Mentions[index].ID)
 	// 	}
 	// }
+
+	stmt := `
+	MATCH (u:User) WHERE ID(u) = {userid}
+	MATCH (s:Post) WHERE ID(s) = {postid}
+	CREATE (c:Comment { props } ) SET c.created_at = TIMESTAMP()
+	CREATE (u)-[w:WRITE]->(c)-[a:AT]->(s)
+	RETURN ID(c) AS id
+	`
+
+	res := []struct {
+		ID int64 `json:"id"`
+	}{}
+	cq := neoism.CypherQuery{
+		Statement:  stmt,
+		Parameters: params,
+		Result:     &res,
+	}
+	err := conn.Cypher(&cq)
+	if err != nil {
+		return -1, err
+	}
+	if len(res) > 0 {
+		if res[0].ID >= 0 {
+			return res[0].ID, nil
+		}
+	}
+	return -1, nil
+}
+
+// Create func
+// models.Comment int64
+// int64 error
+func (service commentService) CreateWithMention(comment models.Comment, postID int64) (int64, error) {
+	var mentions []string
+	for _, mention := range comment.Mentions {
+		b, _ := json.Marshal(mention)
+		s := string(b)
+		mentions = append(mentions, s)
+	}
+
+	p := neoism.Props{
+		"message":  comment.Message,
+		"status":   comment.Status,
+		"mentions": mentions,
+	}
+	params := map[string]interface{}{
+		"props":  p,
+		"userid": comment.Owner.ID,
+		"postid": postID,
+	}
+	// if comment.Mentions != nil {
+	// 	var ids []int64
+	// 	for index := 0; index < len(comment.Mentions); index++ {
+	// 		ids = append(ids, comment.Mentions[index].ID)
+	// 	}
+	// }
+	// WITH {json} AS map
+	// MATCH (u:User)
+	// WHERE id(u)=map.owner
+	// CREATE (u)-[:WRITE]->(c:Comment{message:map.message})
+	// FOREACH (mention IN map.mentions |
+	//     MATCH (u2:User) WHERE id(u2) = mention.id
+	//     CREATE (c)-[:MENTION{name:mention.name, length:mention.length, offset:mention.offset}]->(u2))
+	// RETURN id(c) AS id
+
 	stmt := `
 	MATCH (u:User) WHERE ID(u) = {userid}
 	MATCH (s:Post) WHERE ID(s) = {postid}

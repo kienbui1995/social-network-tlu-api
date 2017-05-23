@@ -28,6 +28,6 @@ func (c Comment) Validate() (bool, error) {
 // MentionObject struct
 type MentionObject struct {
 	ID     int64 `json:"id"`
-	Length int   `json:"length"`
-	Offset int   `json:"offset"`
+	Length int64 `json:"length"`
+	Offset int64 `json:"offset"`
 }

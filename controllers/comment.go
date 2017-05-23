@@ -148,7 +148,26 @@ func (controller CommentController) Create(c *gin.Context) {
 				Title:      "@" + user.Username + " bình luận bài đăng của bạn",
 				Message:    json.Message,
 			}
+
 			PushTest(notify)
+
+		}()
+
+		// push noti when mention
+		go func() {
+			user, _ := services.NewUserService().Get(myUserID)
+			for _, mention := range json.Mentions {
+				notify := models.Notification{
+					UserID:     mention.ID,
+					ObjectID:   postID,
+					ObjectType: "post",
+					Title:      "@" + user.Username + " nhắc đến bạn trong một bình luận",
+					Message:    json.Message,
+				}
+
+				PushTest(notify)
+
+			}
 
 		}()
 		return
