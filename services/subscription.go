@@ -109,7 +109,7 @@ func (service subscriptionService) GetSubscriptions(userID int64) ([]models.User
 		return nil, err
 	}
 	if len(res) > 0 {
-		if res[0].UserID >= 0 {
+		if res[0].ID >= 0 {
 			return res, nil
 		}
 	}
@@ -140,7 +140,7 @@ func (service subscriptionService) GetFollowers(userID int64) ([]models.UserFoll
 		return nil, err
 	}
 	if len(res) > 0 {
-		if res[0].UserID >= 0 {
+		if res[0].ID >= 0 {
 			return res, nil
 		}
 

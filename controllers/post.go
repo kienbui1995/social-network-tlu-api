@@ -118,7 +118,7 @@ func (controller PostController) Delete(c *gin.Context) {
 	}
 
 	// delete action
-	deleted, errDelete := controller.Service.Delete(userID)
+	deleted, errDelete := controller.Service.Delete(postID)
 	if errDelete == nil && deleted == true {
 		helpers.ResponseNoContentJSON(c)
 
@@ -256,7 +256,7 @@ func (controller PostController) Update(c *gin.Context) {
 		fmt.Printf("Replace helpers: %s\n", errGet.Error())
 		return
 	}
-	if myUserID != olderPost.UserID {
+	if myUserID != olderPost.Owner.ID {
 		helpers.ResponseAuthJSON(c, configs.EcPermission, "Permissions error")
 		return
 	}
@@ -334,8 +334,8 @@ func (controller PostController) CreateLike(c *gin.Context) {
 			post, _ := controller.Service.Get(postID, myUserID)
 			userLiked, _ := services.NewUserService().Get(myUserID)
 			notify := models.Notification{
-				UserID:     post.UserID,
-				ObjectID:   post.PostID,
+				UserID:     post.Owner.ID,
+				ObjectID:   post.ID,
 				ObjectType: "post",
 				Title:      "@" + userLiked.Username + " thích trạng thái của bạn",
 				Message:    post.Message,
@@ -460,4 +460,173 @@ func (controller PostController) GetLikes(c *gin.Context) {
 	} else {
 		fmt.Printf("GetLikes services: Don't GetLikes\n")
 	}
+}
+
+// CreateFollow func
+func (controller PostController) CreateFollow(c *gin.Context) {
+	postID, errParseInt := strconv.ParseInt(c.Param("id"), 10, 64)
+	if errParseInt != nil {
+		helpers.ResponseBadRequestJSON(c, configs.EcParam, "Invalid parameter: post_id")
+		return
+	}
+
+	exist, errCheckExistPost := controller.Service.CheckExistPost(postID)
+	if errCheckExistPost != nil {
+		helpers.ResponseServerErrorJSON(c)
+		fmt.Printf("CheckExistPost service: %s\n", errCheckExistPost.Error())
+		return
+	}
+	if exist != true {
+		helpers.ResponseNotFoundJSON(c, configs.EcNoExistObject, "Not exist object")
+		return
+	}
+	//check permisson
+	myUserID, errGetUserIDFromToken := GetUserIDFromToken(c.Request.Header.Get("token"))
+	if errGetUserIDFromToken != nil {
+		helpers.ResponseServerErrorJSON(c)
+		fmt.Printf("GetUserIDFromToken controller: %s\n", errGetUserIDFromToken.Error())
+		return
+	}
+	// check liked
+	if liked, _ := controller.Service.CheckExistLike(postID, myUserID); liked == true {
+		helpers.ResponseBadRequestJSON(c, configs.EcExisObject, "Exist this object: Likes")
+		return
+	}
+
+	likes, errCreateLike := controller.Service.CreateLike(postID, myUserID)
+	if errCreateLike == nil && likes >= 0 {
+		helpers.ResponseSuccessJSON(c, 1, "Like post successful", map[string]int{"likes": likes})
+
+		// auto Increase post Likes
+		go func() {
+			ok, errIncreaseLikes := controller.Service.IncreaseLikes(postID)
+			if errIncreaseLikes != nil {
+				fmt.Printf("IncreaseLikes service: %s\n", errIncreaseLikes.Error())
+			}
+			if ok != true {
+				fmt.Printf("IncreaseLikes service: don't increase like")
+			}
+		}()
+
+		// push noti
+		go func() {
+			post, _ := controller.Service.Get(postID, myUserID)
+			userLiked, _ := services.NewUserService().Get(myUserID)
+			notify := models.Notification{
+				UserID:     post.Owner.ID,
+				ObjectID:   post.ID,
+				ObjectType: "post",
+				Title:      "@" + userLiked.Username + " thích trạng thái của bạn",
+				Message:    post.Message,
+			}
+			PushTest(notify)
+		}()
+		return
+	}
+
+	helpers.ResponseServerErrorJSON(c)
+	if errCreateLike != nil {
+		fmt.Printf("CreateLike services: %s\n", errCreateLike.Error())
+	} else {
+		fmt.Printf("CreateLike services: Don't Create Like\n")
+	}
+}
+
+// DeleteFollow func
+func (controller PostController) DeleteFollow(c *gin.Context) {
+
+}
+
+// CreateReport func
+func (controller PostController) CreateReport(c *gin.Context) {
+
+}
+
+// DeleteReport func
+func (controller PostController) DeleteReport(c *gin.Context) {
+
+}
+
+// GetUsers func to get mentioned users or can_mention users
+func (controller PostController) GetUsers(c *gin.Context) {
+	postID, errParseInt := strconv.ParseInt(c.Param("id"), 10, 64)
+	if errParseInt != nil {
+		helpers.ResponseBadRequestJSON(c, configs.EcParam, "Invalid parameter: post_id")
+		return
+	}
+
+	exist, errCheckExistPost := controller.Service.CheckExistPost(postID)
+	if errCheckExistPost != nil {
+		helpers.ResponseServerErrorJSON(c)
+		fmt.Printf("CheckExistPost service: %s\n", errCheckExistPost.Error())
+		return
+	}
+	if exist != true {
+		helpers.ResponseNotFoundJSON(c, configs.EcNoExistObject, "Not exist object")
+		return
+	}
+
+	//check permisson
+	myUserID, errGetUserIDFromToken := GetUserIDFromToken(c.Request.Header.Get("token"))
+	if errGetUserIDFromToken != nil {
+		helpers.ResponseServerErrorJSON(c)
+		fmt.Printf("GetUserIDFromToken controller: %s\n", errGetUserIDFromToken.Error())
+		return
+	}
+	params := helpers.ParamsGetAll{}
+	params.Type = configs.SCanMention
+	params.Type = c.DefaultQuery("type", params.Type)
+	params.Skip, _ = strconv.Atoi(c.DefaultQuery("skip", configs.SSkip))
+	params.Limit, _ = strconv.Atoi(c.DefaultQuery("limit", configs.SLimit))
+	params.Sort = c.DefaultQuery("sort", configs.SSort)
+	params.Sort, _ = helpers.ConvertSort(params.Sort)
+
+	// get can mentioned users
+	if params.Type == configs.SCanMention {
+		users, errGetCanMentionedUsers := controller.Service.GetCanMentionedUsers(postID, params, myUserID)
+		if errGetCanMentionedUsers != nil {
+			helpers.ResponseServerErrorJSON(c)
+			fmt.Printf("GetCanMentionedUsers service: %s\n", errGetCanMentionedUsers.Error())
+			return
+		}
+		helpers.ResponseEntityListJSON(c, 1, "Get user could mentioned successful", users, params, len(users))
+		return
+	}
+
+	// get mentioned users
+	if params.Type == configs.SMentioned {
+		users, errGetMentionedUsers := controller.Service.GetMentionedUsers(postID, params, myUserID)
+		if errGetMentionedUsers != nil {
+			helpers.ResponseServerErrorJSON(c)
+			fmt.Printf("GetMentionedUsers service: %s\n", errGetMentionedUsers.Error())
+			return
+		}
+		helpers.ResponseEntityListJSON(c, 1, "Get mentioned users successful", users, params, len(users))
+		return
+	}
+
+	// get liked users
+	if params.Type == configs.SLikedPost {
+		users, errGetLikedUsers := controller.Service.GetLikedUsers(postID, params, myUserID)
+		if errGetLikedUsers != nil {
+			helpers.ResponseServerErrorJSON(c)
+			fmt.Printf("GetLikedUsers service: %s\n", errGetLikedUsers.Error())
+			return
+		}
+		helpers.ResponseEntityListJSON(c, 1, "Get liked users successful", users, params, len(users))
+		return
+	}
+
+	// get followed users
+	if params.Type == configs.SFollowedPost {
+		users, errGetFollowedUsers := controller.Service.GetFollowedUsers(postID, params, myUserID)
+		if errGetFollowedUsers != nil {
+			helpers.ResponseServerErrorJSON(c)
+			fmt.Printf("GetFollowedUsers service: %s\n", errGetFollowedUsers.Error())
+			return
+		}
+		helpers.ResponseEntityListJSON(c, 1, "Get followed users successful", users, params, len(users))
+		return
+	}
+
 }

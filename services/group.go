@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/jmcvetta/neoism"
+	"github.com/kienbui1995/social-network-tlu-api/configs"
 	"github.com/kienbui1995/social-network-tlu-api/helpers"
 	"github.com/kienbui1995/social-network-tlu-api/models"
 )
@@ -16,9 +17,14 @@ type GroupServiceInterface interface {
 	Create(group models.Group, myUserID int64) (int64, error)
 	Update(groupID int64, newGroup models.InfoGroup) (models.Group, error)
 	CheckExistGroup(groupID int64) (bool, error)
-	GetMembers(params helpers.ParamsGetAll, groupID int64) ([]models.UserJoinedObject, error)
+	CheckUserRole(groupID int64, userID int64) (int, error)
+
+	GetMembers(params helpers.ParamsGetAll, groupID int64) ([]models.GroupMember, error)
+	GetPendingUsers(params helpers.ParamsGetAll, groupID int64) ([]models.PendingUser, error)
+	GetBlockedUsers(params helpers.ParamsGetAll, groupID int64) ([]models.UserFollowObject, error)
+
 	CreateMember(groupID int64, userID int64) (bool, error)
-	CreateRequest(groupID int64, userID int64) (bool, error)
+	CreateRequest(models.GroupMembershipSentRequest) (bool, error)
 	IncreasePosts(groupID int64) (bool, error)
 	DecreasePosts(groupID int64) (bool, error)
 }
@@ -137,6 +143,7 @@ func (service groupService) Create(group models.Group, myUserID int64) (int64, e
 		"avatar":      group.Avatar,
 		"cover":       group.Cover,
 		"privacy":     group.Privacy,
+		"requests":    0,
 		"members":     0,
 		"posts":       0,
 		"status":      0,
@@ -239,10 +246,67 @@ func (service groupService) CheckExistGroup(groupID int64) (bool, error) {
 	return false, nil
 }
 
+// CheckUserRole func
+// int64 int64
+// int error
+func (service groupService) CheckUserRole(groupID int64, userID int64) (int, error) {
+	stmt := `
+	MATCH (g:Group)	WHERE ID(g)= {groupID}
+	MATCH (u:User) WHERE ID(u) = {userID}
+	RETURN
+		exists((u)-[:JOIN]->(g)) AS joined,
+		exists((u)-[:ADMIN]->(g)) AS is_admin,
+		exists((u)-[:REQUEST{status:"pending"}]->(g)) AS pending,
+		exists((u)-[:REQUEST{status:"declined"}]->(g)) AS declined,
+		exists((u)-[:REQUEST{status:"blocked"}]->(g)) AS blocked,
+	`
+
+	paramsQuery := neoism.Props{
+		"groupID": groupID,
+		"userID":  userID,
+	}
+	res := []struct {
+		Joined   bool `json:"joined"`
+		IsAdmin  bool `json:"is_admin"`
+		Pending  bool `json:"pending"`
+		Declined bool `json:"declined"`
+		Blocked  bool `json:"blocked"`
+	}{}
+
+	cq := neoism.CypherQuery{
+		Statement:  stmt,
+		Parameters: paramsQuery,
+		Result:     &res,
+	}
+
+	err := conn.Cypher(&cq)
+	if err != nil {
+		return -1, err
+	}
+	if len(res) > 0 {
+		if res[0].Blocked {
+			return configs.IBlocked, nil
+		}
+		if res[0].Declined {
+			return configs.IDeclined, nil
+		}
+		if res[0].Pending {
+			return configs.IPending, nil
+		}
+		if res[0].Joined {
+			return configs.IMember, nil
+		}
+		if res[0].IsAdmin {
+			return configs.IAdmin, nil
+		}
+	}
+	return -1, nil
+}
+
 // GetMembers func
 // helpers.ParamsGetAll int64
 // []models.UserJoinedObject error
-func (service groupService) GetMembers(params helpers.ParamsGetAll, groupID int64) ([]models.UserJoinedObject, error) {
+func (service groupService) GetMembers(params helpers.ParamsGetAll, groupID int64) ([]models.GroupMember, error) {
 	stmt := fmt.Sprintf(`
 	MATCH (g:Group)<-[j:JOIN]-(u:User)
 	WHERE ID(g)= {groupID}
@@ -260,7 +324,7 @@ func (service groupService) GetMembers(params helpers.ParamsGetAll, groupID int6
 		"limit":   params.Limit,
 	}
 	res := []struct {
-		Users []models.UserJoinedObject `json:"users"`
+		Users []models.GroupMember `json:"users"`
 	}{}
 
 	cq := neoism.CypherQuery{
@@ -281,17 +345,99 @@ func (service groupService) GetMembers(params helpers.ParamsGetAll, groupID int6
 	return nil, nil
 }
 
+// GetPendingUsers func
+// helpers.ParamsGetAll int64
+// []models.UserJoinedObject error
+func (service groupService) GetPendingUsers(params helpers.ParamsGetAll, groupID int64) ([]models.PendingUser, error) {
+	return nil, nil
+}
+
+// GetBlockedUsers func
+// helpers.ParamsGetAll int64
+// []models.UserObject error
+func (service groupService) GetBlockedUsers(params helpers.ParamsGetAll, groupID int64) ([]models.UserFollowObject, error) {
+	return nil, nil
+}
+
 // CreateMember func
 // int64 int64
 // bool error
 func (service groupService) CreateMember(groupID int64, userID int64) (bool, error) {
+
+	// p := neoism.Props{
+	// 	"name":        group.Name,
+	// 	"description": group.Description,
+	// 	"avatar":      group.Avatar,
+	// }
+	stmt := `
+			MATCH(u:User) WHERE ID(u) = {userID}
+			MATCH(g:Group) WHERE ID(g) = {groupID}
+			CREATE (g)<-[r:JOIN]-(u)
+			SET r.created_at = TIMESTAMP()
+			RETURN ID(r) as id
+			`
+	params := map[string]interface{}{
+		"userID":  userID,
+		"groupID": groupID,
+	}
+	res := []struct {
+		ID int64 `json:"id"`
+	}{}
+	cq := neoism.CypherQuery{
+		Statement:  stmt,
+		Parameters: params,
+		Result:     &res,
+	}
+	err := conn.Cypher(&cq)
+	if err != nil {
+		return false, err
+	}
+	if len(res) > 0 {
+		if res[0].ID >= 0 {
+			return true, nil
+		}
+	}
 	return false, nil
 }
 
 // CreateRequest func
 // int64 int64
 // bool error
-func (service groupService) CreateRequest(groupID int64, userID int64) (bool, error) {
+func (service groupService) CreateRequest(request models.GroupMembershipSentRequest) (bool, error) {
+	// p := neoism.Props{
+	// 	"name":        group.Name,
+	// 	"description": group.Description,
+	// 	"avatar":      group.Avatar,
+	// }
+	stmt := `
+			MATCH(u:User) WHERE ID(u) = {userID}
+			MATCH(g:Group) WHERE ID(g) = {groupID}
+			CREATE (g)<-[r:REQUEST]-(u)
+			SET r.created_at = TIMESTAMP(), r.status = 1, r.request_message = {message}, g.pending_requests=g.pending_requests+1
+			RETURN ID(r) as id
+			`
+	params := map[string]interface{}{
+		"userID":  request.UserID,
+		"groupID": request.GroupID,
+		"message": request.Message,
+	}
+	res := []struct {
+		ID int64 `json:"id"`
+	}{}
+	cq := neoism.CypherQuery{
+		Statement:  stmt,
+		Parameters: params,
+		Result:     &res,
+	}
+	err := conn.Cypher(&cq)
+	if err != nil {
+		return false, err
+	}
+	if len(res) > 0 {
+		if res[0].ID >= 0 {
+			return true, nil
+		}
+	}
 	return false, nil
 }
 

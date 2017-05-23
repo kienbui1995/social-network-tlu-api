@@ -32,8 +32,17 @@ func (controller AccountController) SignUp(c *gin.Context) {
 		helpers.ResponseErrorJSON(c, helpers.NewErrorDetail(382, "Please enter a valid username."))
 		return
 	}
+	if govalidator.IsNull(user.Password) == true {
+		helpers.ResponseErrorJSON(c, helpers.NewErrorDetail(configs.EcUsersRegisterPasswordBlank, "Please enter a valid password."))
+		return
+	}
 	if govalidator.IsEmail(user.Email) == false {
 		helpers.ResponseErrorJSON(c, helpers.NewErrorDetail(385, "Please enter a valid email address."))
+		return
+	}
+
+	if _, errValidate := user.Validate(); errValidate != nil {
+		helpers.ResponseErrorJSON(c, helpers.NewErrorDetail(100, errValidate.Error()))
 		return
 	}
 

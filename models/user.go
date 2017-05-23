@@ -5,8 +5,8 @@ import "github.com/asaskevich/govalidator"
 // User struct
 type User struct {
 	ID            int64  `json:"id,omitempty"`
-	Username      string `json:"username,omitempty" valid:"length(8|32)"`
-	Password      string `json:"password,omitempty" valid:"length(7|32)"`
+	Username      string `json:"username,omitempty" valid:"required"`
+	Password      string `json:"password,omitempty" valid:"required"`
 	FullName      string `json:"full_name,omitempty"`
 	FirstName     string `json:"first_name,omitempty"`
 	MiddleName    string `json:"middle_name,omitempty"`
@@ -16,7 +16,7 @@ type User struct {
 	Avatar        string `json:"avatar,omitempty"`
 	Cover         string `json:"cover,omitempty"`
 	About         string `json:"about,omitempty"`
-	Gender        string `json:"gender,omitempty"`
+	Gender        int    `json:"gender,omitempty"`
 	Phone         string `json:"phone,omitempty"`
 	Email         string `json:"email,omitempty" valid:"email"`
 	FacebookID    string `json:"facebook_id,omitempty"`
@@ -55,7 +55,7 @@ type InfoUser struct {
 	Avatar        string `json:"avatar,omitempty"`
 	Cover         string `json:"cover,omitempty"`
 	About         string `json:"about,omitempty"`
-	Gender        string `json:"gender,omitempty"`
+	Gender        int    `json:"gender,omitempty"`
 	Phone         string `json:"phone,omitempty"`
 	Email         string `json:"email,omitempty" valid:"email"`
 	FacebookID    string `json:"facebook_id,omitempty"`
@@ -65,7 +65,7 @@ type InfoUser struct {
 
 // UserObject struct
 type UserObject struct {
-	UserID   int64  `json:"userid"`
+	ID       int64  `json:"id"`
 	Username string `json:"username"`
 	FullName string `json:"full_name"`
 	Avatar   string `json:"avatar"`
@@ -73,7 +73,7 @@ type UserObject struct {
 
 //UserFollowObject struct for a sub user for get all user; search user, list user any where
 type UserFollowObject struct {
-	UserID     int64  `json:"id"`
+	ID         int64  `json:"id"`
 	Username   string `json:"username"`
 	FullName   string `json:"full_name"`
 	Avatar     string `json:"avatar"`
@@ -82,19 +82,26 @@ type UserFollowObject struct {
 
 //UserLikedObject struct for a user liked things
 type UserLikedObject struct {
-	UserID   int64  `json:"id"`
+	ID       int64  `json:"id"`
 	Username string `json:"username"`
 	FullName string `json:"full_name"`
 	Avatar   string `json:"avatar"`
 	LikedAt  int64  `json:"liked_at"`
 }
 
-//UserJoinedObject struct for a user joined group
-type UserJoinedObject struct {
-	ID       int64      `json:"id"`
-	Username string     `json:"username"`
-	FullName string     `json:"full_name"`
-	Avatar   string     `json:"avatar"`
+// //UserJoinedObject struct for a user joined group
+// type UserJoinedObject struct {
+// 	ID       int64      `json:"id"`
+// 	Username string     `json:"username"`
+// 	FullName string     `json:"full_name"`
+// 	Avatar   string     `json:"avatar"`
+// 	JoinedAt int64      `json:"joined_at"`
+// 	JoinedBy UserObject `json:"joined_by,omitempty"`
+// }
+
+//PendingUser struct for a user request group
+type PendingUser struct {
+	UserObject
 	JoinedAt int64      `json:"joined_at"`
 	JoinedBy UserObject `json:"joined_by,omitempty"`
 }

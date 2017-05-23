@@ -30,6 +30,19 @@ type PostServiceInterface interface {
 	IncreaseLikes(postID int64) (bool, error)
 	DecreaseLikes(postID int64) (bool, error)
 	CheckPostInteractivePermission(postID int64, userID int64) (bool, error)
+
+	// work with FOLLOW
+	CreateFollow(postID int64, userID int64) (int64, error)
+	DeleteFollow(postID int64, userID int64) (bool, error)
+	CheckExistFollow(postID int64, userID int64) (bool, error)
+
+	// work with users (can_mention, mentioned, liked, commented, followed)
+	GetUsers(postID int64, params helpers.ParamsGetAll, myUserID int64) ([]models.UserFollowObject, error)
+	GetCanMentionedUsers(postID int64, params helpers.ParamsGetAll, myUserID int64) ([]models.UserFollowObject, error)
+	GetMentionedUsers(postID int64, params helpers.ParamsGetAll, myUserID int64) ([]models.UserFollowObject, error)
+	GetLikedUsers(postID int64, params helpers.ParamsGetAll, myUserID int64) ([]models.UserFollowObject, error)
+	GetCommentedUsers(postID int64, params helpers.ParamsGetAll, myUserID int64) ([]models.UserFollowObject, error)
+	GetFollowedUsers(postID int64, params helpers.ParamsGetAll, myUserID int64) ([]models.UserFollowObject, error)
 }
 
 // postService struct
@@ -231,7 +244,10 @@ func (service postService) Create(post models.Post, myUserID int64) (int64, erro
 				RETURN ID(s) as id
 		  	`
 	}
-	params := map[string]interface{}{"props": p, "fromid": myUserID}
+	params := map[string]interface{}{
+		"props":  p,
+		"fromid": myUserID,
+	}
 	res := []struct {
 		ID int64 `json:"id"`
 	}{}
@@ -271,7 +287,7 @@ func (service postService) Update(post models.Post) (models.Post, error) {
 				true AS can_delete
 			`
 		params = map[string]interface{}{
-			"postid":  post.PostID,
+			"postid":  post.ID,
 			"message": post.Message,
 			"photo":   post.Photo,
 			"privacy": post.Privacy,
@@ -293,7 +309,7 @@ func (service postService) Update(post models.Post) (models.Post, error) {
 			true AS can_delete
   	`
 		params = map[string]interface{}{
-			"postid":  post.PostID,
+			"postid":  post.ID,
 			"message": post.Message,
 			"privacy": post.Privacy,
 			"status":  post.Status,
@@ -695,4 +711,213 @@ func (service postService) CheckPostInteractivePermission(postID int64, userID i
 	}
 	return false, nil
 
+}
+
+// CreateFollow func
+// int64 int64
+// int64 error
+func (service postService) CreateFollow(postID int64, userID int64) (int64, error) {
+	stmt := `
+		MATCH(u:User) WHERE ID(u) = {userID}
+		MATCH(p:Post) WHERE ID(p) = {postID}
+		MERGE(u)-[f:FOLLOW]->(p)
+		ON CREATE SET f.created_at = TIMESTAMP()
+		RETURN ID(f) AS id
+		`
+	params := map[string]interface{}{
+		"postID": postID,
+		"userID": userID,
+	}
+	res := []struct {
+		ID int64 `json:"id"`
+	}{}
+	cq := neoism.CypherQuery{
+		Statement:  stmt,
+		Parameters: params,
+		Result:     &res,
+	}
+	err := conn.Cypher(&cq)
+	if err != nil {
+		return -1, err
+	}
+	if len(res) > 0 {
+		return res[0].ID, nil
+	}
+	return -1, nil
+}
+
+// DeleteFollow func
+// int64 int64
+// bool error
+func (service postService) DeleteFollow(postID int64, userID int64) (bool, error) {
+	stmt := `
+		MATCH (u:User)-[f:FOLLOW]->(p:Post)
+		WHERE ID(u) = {userID} AND ID(p) = {postID}
+		DELETE f
+		`
+	params := map[string]interface{}{
+		"postID": postID,
+		"userID": userID,
+	}
+
+	cq := neoism.CypherQuery{
+		Statement:  stmt,
+		Parameters: params,
+	}
+	err := conn.Cypher(&cq)
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
+// CheckExistFollow func
+// int64 int64
+// bool error
+func (service postService) CheckExistFollow(postID int64, userID int64) (bool, error) {
+	stmt := `
+		MATCH (u:User)-[f:FOLLOW]->(p:Post)
+		WHERE ID(u) = {userID} AND ID(p) = {postID}
+		RETURN ID(f) as id
+		`
+	params := map[string]interface{}{
+		"postID": postID,
+		"userID": userID,
+	}
+	res := []struct {
+		ID int64 `json:"id"`
+	}{}
+	cq := neoism.CypherQuery{
+		Statement:  stmt,
+		Parameters: params,
+		Result:     &res,
+	}
+	err := conn.Cypher(&cq)
+	if err != nil {
+		return false, err
+	}
+	if len(res) > 0 {
+		if res[0].ID >= 0 {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+// GetUsers func
+// helpers.ParamsGetAll
+// models.PublicUsers error
+func (service postService) GetUsers(postID int64, params helpers.ParamsGetAll, myUserID int64) ([]models.UserFollowObject, error) {
+	stmt := `
+	MATCH (u:User)
+	with u {id:ID(u), .*}  AS user
+
+		SKIP {skip}
+		LIMIT {limit}
+		RETURN collect(user) AS users
+		`
+	p := map[string]interface{}{
+		"skip":  params.Skip,
+		"limit": params.Limit,
+	}
+	var res []struct {
+		Users []models.UserFollowObject `json:"users"`
+	}
+
+	cq := neoism.CypherQuery{
+		Statement:  stmt,
+		Parameters: p,
+		Result:     &res,
+	}
+
+	err := conn.Cypher(&cq)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(res) > 0 {
+		return res[0].Users, nil
+	}
+	return nil, nil
+}
+
+// GetCanMentionedUsers func to get users who could mentioned in Comment
+// int64 helpers.ParamsGetAll int64
+// []models.UserFollowObject error
+func (service postService) GetCanMentionedUsers(postID int64, params helpers.ParamsGetAll, myUserID int64) ([]models.UserFollowObject, error) {
+	stmt := fmt.Sprintf(`
+	MATCH (me:User)-[f:FOLLOW]-(u:User)
+ 	WHERE id(me) = {myUserID}
+ 	WITH ID(u) AS id,me
+ 	MATCH (u1:User)-[l:LIKE|:FOLLOW|:POST]->(p:Post) ,(u2)-[cr:WRITE]->(c:Comment)-[:AT]->(p)
+ 	WHERE ID(p)= {posID} and u2<>u1
+ 	WITH  collect(id)+collect(id(u1))+ collect(id(u2)) AS users, me
+ 	UNWIND users AS x
+ 	WITH DISTINCT x, me
+ 	MATCH (mention:User)
+ 	WHERE ID(mention) = x
+ 	WITH
+ 		mention{id:ID(mention),.username, .avatar, .full_name, is_followed: exists((me)-[:FOLLOW]->(mention)) } AS user,
+    mention.created_at AS created_at, mention.username AS username, mention.full_name AS full_name, ID(mention) AS id
+ 	ORDER BY %s
+ 	SKIP {skip}
+  LIMIT {limit}
+ 	RETURN  collect(user) AS users
+
+		`,
+		params.Sort)
+	p := map[string]interface{}{
+		"postID":   postID,
+		"myUserID": myUserID,
+		"skip":     params.Skip,
+		"limit":    params.Limit,
+	}
+	var res []struct {
+		Users []models.UserFollowObject `json:"users"`
+	}
+
+	cq := neoism.CypherQuery{
+		Statement:  stmt,
+		Parameters: p,
+		Result:     &res,
+	}
+
+	err := conn.Cypher(&cq)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(res) > 0 {
+		return res[0].Users, nil
+	}
+	return nil, nil
+}
+
+// GetMentionedUsers func
+// int64 helpers.ParamsGetAll int64
+// []models.UserFollowObject error
+func (service postService) GetMentionedUsers(postID int64, params helpers.ParamsGetAll, myUserID int64) ([]models.UserFollowObject, error) {
+	return nil, nil
+}
+
+// GetLikedUsers func
+// int64 helpers.ParamsGetAll int64
+// []models.UserFollowObject error
+func (service postService) GetLikedUsers(postID int64, params helpers.ParamsGetAll, myUserID int64) ([]models.UserFollowObject, error) {
+	return nil, nil
+}
+
+// GetCommentedUsers func
+// int64 helpers.ParamsGetAll int64
+// []models.UserFollowObject error
+func (service postService) GetCommentedUsers(postID int64, params helpers.ParamsGetAll, myUserID int64) ([]models.UserFollowObject, error) {
+	return nil, nil
+}
+
+// GetFollowedUsers func
+// int64 helpers.ParamsGetAll int64
+// []models.UserFollowObject error
+func (service postService) GetFollowedUsers(postID int64, params helpers.ParamsGetAll, myUserID int64) ([]models.UserFollowObject, error) {
+	return nil, nil
 }

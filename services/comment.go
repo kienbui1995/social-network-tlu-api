@@ -43,7 +43,8 @@ func (service commentService) GetAll(postID int64, params helpers.ParamsGetAll, 
 	WHERE ID(s) = {postid}
 	RETURN
 		ID(c) AS id, c.message AS message, c.created_at AS created_at, c.updated_at AS updated_at ,c.status AS status,
-		ID(u) AS userid, u.username AS username, u.full_name AS full_name, u.avatar AS avatar,
+		u{id:ID(u),.username, .full_name, .avatar} AS owner, mentions
+		true AS can_report,
 		ID(u) = ID(me) AS can_edit,
 		ID(u) = ID(me) AS can_delete
 	ORDER BY %s
@@ -81,13 +82,14 @@ func (service commentService) GetAll(postID int64, params helpers.ParamsGetAll, 
 func (service commentService) Get(commentID int64) (models.Comment, error) {
 	stmt := `
 	MATCH (c:Comment)<-[:WRITE]-(u:User)
-	WHERE ID(c) = {commentid}
+	WHERE ID(c) = {commentID}
 	RETURN
 		ID(c) AS id, c.message AS message, c.created_at AS created_at, c.updated_at AS updated_at ,c.status AS status,
-		ID(u) AS userid, u.username AS username, u.full_name AS full_name, u.avatar AS avatar
+		u{id:ID(u),.username, .full_name, .avatar} AS owner,
+		true AS can_report
 	`
 	params := map[string]interface{}{
-		"commentid": commentID,
+		"commentID": commentID,
 	}
 
 	res := []models.Comment{}
@@ -116,6 +118,17 @@ func (service commentService) Create(comment models.Comment, postID int64) (int6
 		"message": comment.Message,
 		"status":  comment.Status,
 	}
+	params := map[string]interface{}{
+		"props":  p,
+		"userid": comment.Owner.ID,
+		"postid": postID,
+	}
+	// if comment.Mentions != nil {
+	// 	var ids []int64
+	// 	for index := 0; index < len(comment.Mentions); index++ {
+	// 		ids = append(ids, comment.Mentions[index].ID)
+	// 	}
+	// }
 	stmt := `
 	MATCH (u:User) WHERE ID(u) = {userid}
 	MATCH (s:Post) WHERE ID(s) = {postid}
@@ -123,11 +136,7 @@ func (service commentService) Create(comment models.Comment, postID int64) (int6
 	CREATE (u)-[w:WRITE]->(c)-[a:AT]->(s)
 	RETURN ID(c) AS id
 	`
-	params := map[string]interface{}{
-		"props":  p,
-		"userid": comment.UserID,
-		"postid": postID,
-	}
+
 	res := []struct {
 		ID int64 `json:"id"`
 	}{}
@@ -154,11 +163,11 @@ func (service commentService) Create(comment models.Comment, postID int64) (int6
 func (service commentService) Delete(commentID int64) (bool, error) {
 	stmt := `
 	MATCH (c:Comment)
-	WHERE ID(c) = {commentid}
+	WHERE ID(c) = {commentID}
 	DETACH DELETE c
 	`
 	params := map[string]interface{}{
-		"commentid": commentID,
+		"commentID": commentID,
 	}
 	cq := neoism.CypherQuery{
 		Statement:  stmt,

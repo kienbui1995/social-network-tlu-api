@@ -62,6 +62,30 @@ const (
 	SAccepted = "accepted"
 	IDeclined = 3
 	SDeclined = "declined"
+	IMember   = 4
+	SMember   = "member"
+	IBlocked  = 5
+	SBlocked  = "blocked"
+	IAdmin    = 6
+	SAdmin    = "admin"
+)
+
+// Const type in get users in post/comment
+const (
+	ICanMention = 1
+	SCanMention = "can_mention"
+	IMentioned  = 2
+	SMentioned  = "mentioned"
+)
+
+// Const type in get users in post
+const (
+	IFollowedPost  = 3
+	SFollowedPost  = "followed"
+	ICommentedPost = 4
+	SCommentedPost = "commented"
+	ILikedPost     = 5
+	SLikedPost     = "liked"
 )
 
 // ErrorCode Table
@@ -83,6 +107,7 @@ const (
 	ECPermissionStatus                  = 220 //  Status not visible
 	EcPermissionPhoto                   = 221 //	Photo not visible
 	EcPermissionPost                    = 222 //  Post not visible
+	EcPermissionGroup                   = 223 //  Group not visible
 	EcPermissionMessage                 = 230 //	Permissions disallow message to user
 	EcEdit                              = 300 //	Edit failure
 	EcEditUserData                      = 310 //	User data edit failure

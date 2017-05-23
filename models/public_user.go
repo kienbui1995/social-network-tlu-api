@@ -15,7 +15,7 @@ type PublicUser struct {
 	Avatar      string `json:"avatar,omitempty"`
 	Cover       string `json:"cover,omitempty"`
 	About       string `json:"about,omitempty"`
-	Gender      string `json:"gender,omitempty"`
+	Gender      int    `json:"gender,omitempty"`
 	Phone       string `json:"phone,omitempty"`
 	Email       string `json:"email,omitempty" valid:"email"`
 	FacebookID  string `json:"facebook_id,omitempty"`

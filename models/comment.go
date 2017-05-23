@@ -4,25 +4,30 @@ import "github.com/asaskevich/govalidator"
 
 // Comment struct
 type Comment struct {
-	UserObject
-	ID        int64  `json:"id"`
-	Message   string `json:"message"`
-	CreatedAt int64  `json:"created_at,omitempty"`
-	UpdatedAt int64  `json:"updated_at,omitempty"`
-	Status    int    `json:"status,omitempty"`
-	CanEdit   bool   `json:"can_edit"`
-	CanDelete bool   `json:"can_delete"`
+	Owner            UserObject      `json:"owner"`
+	ID               int64           `json:"id"`
+	Message          string          `json:"message"`
+	Mentions         []MentionObject `json:"mentions,omitempty"`
+	CreatedAt        int64           `json:"created_at,omitempty"`
+	UpdatedAt        int64           `json:"updated_at,omitempty"`
+	Status           int             `json:"status,omitempty"`
+	CanReportToAdmin bool            `json:"can_report_to_admin,omitempty"`
+	CanReport        bool            `json:"can_report"`
+	CanEdit          bool            `json:"can_edit"`
+	CanDelete        bool            `json:"can_delete"`
 }
 
 // Comments type is comment list
 type Comments []Comment
 
-// IsEmpty funt to check zezo-value
-func (c Comment) IsEmpty() bool {
-	return c == Comment{}
-}
-
 // Validate to Validate struct
 func (c Comment) Validate() (bool, error) {
 	return govalidator.ValidateStruct(c)
+}
+
+// MentionObject struct
+type MentionObject struct {
+	ID     int64 `json:"id"`
+	Length int   `json:"length"`
+	Offset int   `json:"offset"`
 }

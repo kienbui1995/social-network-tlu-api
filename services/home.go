@@ -52,7 +52,7 @@ func (service homeService) FindUserByUsernameAndFullName(name string, myUserID i
 		return nil, err
 	}
 	if len(res) > 0 {
-		if res[0].UserID >= 0 {
+		if res[0].ID >= 0 {
 			return res, nil
 		}
 	}
@@ -73,7 +73,7 @@ func (service homeService) GetNewsFeed(params helpers.ParamsGetAll, myUserID int
 		case s.photo when null then "" else s.photo end AS photo,
 		case s.privacy when null then 1 else s.privacy end AS privacy,
 		case s.status when null then 1 else s.status end AS status,
-		ID(u1) AS userid, u1.full_name AS full_name, u1.avatar AS avatar, u1.username AS username,
+		u1{id:ID(u1), .username, .full_name, . avatar} as owner,
 		s.likes AS likes, s.comments AS comments, s.shares AS shares,
 		exists((u)-[:LIKE]->(s)) AS is_liked,
 		CASE WHEN ID(u1) = {userid} THEN true ELSE false END AS can_edit,
@@ -98,7 +98,7 @@ func (service homeService) GetNewsFeed(params helpers.ParamsGetAll, myUserID int
 		return nil, err
 	}
 	if len(res) > 0 {
-		if res[0].PostID >= 0 {
+		if res[0].ID >= 0 {
 			return res, nil
 		}
 	}
@@ -110,23 +110,24 @@ func (service homeService) GetNewsFeed(params helpers.ParamsGetAll, myUserID int
 // []models.Post error
 func (service homeService) GetNewsFeedWithPageRank(params helpers.ParamsGetAll, myUserID int64) ([]models.Post, error) {
 	stmt := `
-		MATCH(u:User) WHERE ID(u)= {userid}
-		MATCH(u)-[:FOLLOW]->(u1:User)-[:POST]->(p:Post)
-		WHERE p.privacy = 1 OR (p.privacy = 2 AND exists((u)-[:FOLLOW]->(u1))) OR u1 = u
-	    WITH u, u1, COLLECT(p) as posts
-	CALL apoc.algo.pageRank(posts) YIELD node AS s, score
-	RETURN
-			ID(s) AS id, s.message AS message, s.created_at AS created_at,
-		  case s.updated_at when null then "" else s.updated_at end AS updated_at,
-			case s.photo when null then "" else s.photo end AS photo,
-			case s.privacy when null then 1 else s.privacy end AS privacy,
-			case s.status when null then 1 else s.status end AS status,
-			ID(u1) AS userid, u1.full_name AS full_name, u1.avatar AS avatar, u1.username AS username,
-			s.likes AS likes, s.comments AS comments, s.shares AS shares,
-			exists((u)-[:LIKE]->(s)) AS is_liked,
-			CASE WHEN ID(u1) = {userid} THEN true ELSE false END AS can_edit,
-			CASE WHEN ID(u1) = {userid} THEN true ELSE false END AS can_delete
-	ORDER BY score DESC
+	MATCH(u:User) WHERE ID(u)= 253
+	MATCH(u)-[:FOLLOW]->(u1:User)-[:POST]->(p:Post)
+	WHERE p.privacy = 1 OR (p.privacy = 2 AND exists((u)-[:FOLLOW]->(u1))) OR u1 = u
+		WITH u, u1, COLLECT(p) as posts
+  CALL apoc.algo.pageRank(posts) YIELD node AS s, score
+  RETURN
+		ID(s) AS id, s.message AS message, s.created_at AS created_at,
+		case s.updated_at when null then "" else s.updated_at end AS updated_at,
+		case s.photo when null then "" else s.photo end AS photo,
+		case s.privacy when null then 1 else s.privacy end AS privacy,
+		case s.status when null then 1 else s.status end AS status,
+		u1{id:ID(u1), .username, .full_name, .avatar} AS owner,
+		s.likes AS likes, s.comments AS comments, s.shares AS shares,
+		exists((u)-[:LIKE]->(s)) AS is_liked,
+					exists ((u)-[:FOLLOW]->(s)) AS is_followed,
+		CASE WHEN ID(u1) = 253 THEN true ELSE false END AS can_edit,
+		CASE WHEN ID(u1) = 253 THEN true ELSE false END AS can_delete
+	ORDER BY score*TIMESTAMP()/((TIMESTAMP()- created_at)/10+1) DESC
 	SKIP {skip}
 	LIMIT {limit}
 	`
@@ -146,7 +147,7 @@ func (service homeService) GetNewsFeedWithPageRank(params helpers.ParamsGetAll, 
 		return nil, err
 	}
 	if len(res) > 0 {
-		if res[0].PostID >= 0 {
+		if res[0].ID >= 0 {
 			return res, nil
 		}
 	}
