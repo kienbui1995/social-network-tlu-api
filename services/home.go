@@ -64,20 +64,20 @@ func (service homeService) FindUserByUsernameAndFullName(name string, myUserID i
 // []models.Post error
 func (service homeService) GetNewsFeed(params helpers.ParamsGetAll, myUserID int64) ([]models.Post, error) {
 	stmt := fmt.Sprintf(`
-	MATCH(u:User) WHERE ID(u)= {userid}
-	MATCH(u)-[:FOLLOW]->(u1:User)-[:POST]->(s:Post)
-	WHERE s.privacy = 1 OR (s.privacy = 2 AND exists((u)-[:FOLLOW]->(u1))) OR u1 = u
-	RETURN
-		ID(s) AS id, s.message AS message, s.created_at AS created_at,
-	  case s.upload_at when null then "" else s.upload_at end AS upload_at,
-		case s.photo when null then "" else s.photo end AS photo,
-		case s.privacy when null then 1 else s.privacy end AS privacy,
-		case s.status when null then 1 else s.status end AS status,
-		u1{id:ID(u1), .username, .full_name, . avatar} as owner,
-		s.likes AS likes, s.comments AS comments, s.shares AS shares,
-		exists((u)-[:LIKE]->(s)) AS is_liked,
-		CASE WHEN ID(u1) = {userid} THEN true ELSE false END AS can_edit,
-		CASE WHEN ID(u1) = {userid} THEN true ELSE false END AS can_delete
+		MATCH(u:User) WHERE ID(u)= {userid}
+		MATCH(u)-[:FOLLOW]->(u1:User)-[:POST]->(s:Post)
+		WHERE s.privacy = 1 OR (s.privacy = 2 AND exists((u)-[:FOLLOW]->(u1))) OR u1 = u
+		RETURN
+			ID(s) AS id, s.message AS message, s.created_at AS created_at,
+		  case s.uploaded_at when null then "" else s.uploaded_at end AS uploaded_at,
+			case s.photo when null then "" else s.photo end AS photo,
+			case s.privacy when null then 1 else s.privacy end AS privacy,
+			case s.status when null then 1 else s.status end AS status,
+			u1{id:ID(u1), .username, .full_name, . avatar} as owner,
+			s.likes AS likes, s.comments AS comments, s.shares AS shares,
+			exists((u)-[:LIKE]->(s)) AS is_liked,
+			CASE WHEN ID(u1) = {userid} THEN true ELSE false END AS can_edit,
+			CASE WHEN ID(u1) = {userid} THEN true ELSE false END AS can_delete
 	ORDER BY %s
 	SKIP {skip}
 	LIMIT {limit}
@@ -133,9 +133,9 @@ func (service homeService) GetNewsFeedWithPageRank(params helpers.ParamsGetAll, 
 	`
 	res := []models.Post{}
 	paramsQuery := map[string]interface{}{
-		"userid": myUserID,
-		"skip":   params.Skip,
-		"limit":  params.Limit,
+		"myUserID": myUserID,
+		"skip":     params.Skip,
+		"limit":    params.Limit,
 	}
 	cq := neoism.CypherQuery{
 		Statement:  stmt,

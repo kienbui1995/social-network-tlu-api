@@ -71,7 +71,7 @@ func (service postService) GetAll(params helpers.ParamsGetAll, userID int64, myU
 					s.created_at AS created_at, s.updated_at AS updated_at,
 					CASE s.privacy when null then 1 else s.privacy end AS privacy, CASE s.status when null then 1 else s.status end AS status,
 					s.likes AS likes, s.comments AS comments, s.shares AS shares,
-					ID(u) AS userid, u.avatar AS avatar, u.full_name AS full_name, u.username AS username,
+					u{id:ID(u), .username, .full_name, .avatar} AS owner,
 					exists((me)-[:LIKE]->(s)) AS is_liked,
 					CASE WHEN {userid} = {myuserid} THEN true ELSE false END AS can_edit,
 					CASE WHEN {userid} = {myuserid} THEN true ELSE false END AS can_delete
@@ -92,7 +92,7 @@ func (service postService) GetAll(params helpers.ParamsGetAll, userID int64, myU
 					s.created_at AS created_at, s.updated_at AS updated_at,
 					case s.privacy when null then 1 else s.privacy end AS privacy, case s.status when null then 1 else s.status end AS status,
 					s.likes AS likes, s.comments AS comments, s.shares AS shares,
-					ID(u) AS userid, u.avatar AS avatar, u.full_name AS full_name, u.username AS username,
+					u{id:ID(u), .username, .full_name, .avatar} AS owner,
 					exists((me)-[:LIKE]->(s)) AS is_liked,
 					CASE WHEN {userid} = {myuserid} THEN true ELSE false END AS can_edit,
 					CASE WHEN {userid} = {myuserid} THEN true ELSE false END AS can_delete
@@ -113,7 +113,7 @@ func (service postService) GetAll(params helpers.ParamsGetAll, userID int64, myU
 					s.created_at AS created_at, s.updated_at AS updated_at,
 					case s.privacy when null then 1 else s.privacy end AS privacy, case s.status when null then 1 else s.status end AS status,
 					s.likes AS likes, s.comments AS comments, s.shares AS shares,
-					ID(u) AS userid, u.avatar AS avatar, u.full_name AS full_name, u.username AS username,
+					u{id:ID(u), .username, .full_name, .avatar} AS owner,
 					exists((me)-[:LIKE]->(s)) AS is_liked,
 					CASE WHEN {userid} = {myuserid} THEN true ELSE false END AS can_edit,
 					CASE WHEN {userid} = {myuserid} THEN true ELSE false END AS can_delete
