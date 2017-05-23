@@ -157,6 +157,7 @@ func (service postService) Get(postID int64, myUserID int64) (models.Post, error
 				case s.photo when null then "" else s.photo end AS photo,
 				case s.privacy when null then 1 else s.privacy end AS privacy, case s.status when null then 1 else s.status end AS status,
 				ID(u) AS userid, u.username AS username, u.full_name AS full_name, u.avatar AS avatar,
+				u{id:ID(u), .username, .full_name, .avatar} AS owner,
 				s.likes AS likes, s.comments AS comments, s.shares AS shares,
 				exists((me)-[:LIKE]->(s)) AS is_liked,
 				CASE WHEN ID(u) = {myuserid} THEN true ELSE false END AS can_edit,

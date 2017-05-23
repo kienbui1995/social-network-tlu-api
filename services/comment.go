@@ -43,8 +43,8 @@ func (service commentService) GetAll(postID int64, params helpers.ParamsGetAll, 
 	WHERE ID(s) = {postid}
 	RETURN
 		ID(c) AS id, c.message AS message, c.created_at AS created_at, c.updated_at AS updated_at ,c.status AS status,
-		u{id:ID(u),.username, .full_name, .avatar} AS owner, mentions
-		true AS can_report,
+		u{id:ID(u),.username, .full_name, .avatar} AS owner, c.mentions,
+		ID(u) <> ID(me) AS can_report,
 		ID(u) = ID(me) AS can_edit,
 		ID(u) = ID(me) AS can_delete
 	ORDER BY %s
