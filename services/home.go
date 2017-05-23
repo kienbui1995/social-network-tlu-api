@@ -110,7 +110,7 @@ func (service homeService) GetNewsFeed(params helpers.ParamsGetAll, myUserID int
 // []models.Post error
 func (service homeService) GetNewsFeedWithPageRank(params helpers.ParamsGetAll, myUserID int64) ([]models.Post, error) {
 	stmt := `
-	MATCH(u:User) WHERE ID(u)= 253
+	MATCH(u:User) WHERE ID(u)= {myUserID}
 	MATCH(u)-[:FOLLOW]->(u1:User)-[:POST]->(p:Post)
 	WHERE p.privacy = 1 OR (p.privacy = 2 AND exists((u)-[:FOLLOW]->(u1))) OR u1 = u
 		WITH u, u1, COLLECT(p) as posts
@@ -125,8 +125,8 @@ func (service homeService) GetNewsFeedWithPageRank(params helpers.ParamsGetAll, 
 		s.likes AS likes, s.comments AS comments, s.shares AS shares,
 		exists((u)-[:LIKE]->(s)) AS is_liked,
 					exists ((u)-[:FOLLOW]->(s)) AS is_followed,
-		CASE WHEN ID(u1) = 253 THEN true ELSE false END AS can_edit,
-		CASE WHEN ID(u1) = 253 THEN true ELSE false END AS can_delete
+		CASE WHEN ID(u1) = {myUserID} THEN true ELSE false END AS can_edit,
+		CASE WHEN ID(u1) = {myUserID} THEN true ELSE false END AS can_delete
 	ORDER BY score*TIMESTAMP()/((TIMESTAMP()- created_at)/10+1) DESC
 	SKIP {skip}
 	LIMIT {limit}
