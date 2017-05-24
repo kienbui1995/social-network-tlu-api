@@ -16,19 +16,10 @@ func AddRoutesGroups(r *gin.RouterGroup) {
 		routes.GET("/:id", controller.Get)
 		routes.DELETE("/:id", controller.Delete)
 		routes.PUT("/:id", controller.Update)
-
-		routes.GET("/:id/members", controller.GetMembers)
-		routes.POST("/:id/members", controller.CreateMember)
-
-		routes.GET("/:id/requests", controller.GetRequests)
-		routes.POST("/:id/requests", controller.CreateRequest)
-
-		routes.GET("/:id/reports", controller.GetReports)
-		routes.POST("/:id/reports", controller.CreateReport)
-
-		routes.GET("/:id/posts", controller.GetPosts)
-		routes.POST("/:id/posts", controller.CreatePost)
-
+	}
+	routes2 := r.Group("/users")
+	{
+		routes2.GET("/:id/groups", controller.GetJoinedGroup)
 	}
 
 }

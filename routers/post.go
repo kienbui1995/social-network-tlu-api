@@ -20,8 +20,8 @@ func AddRoutesPosts(r *gin.RouterGroup) {
 		routes.DELETE("/:id/likes", controller.DeleteLike)
 		routes.GET("/:id/likes", controller.GetLikes)
 
-		routes.POST("/:id/supcriptions", controller.CreateFollow)
-		routes.DELETE("/:id/supcriptions", controller.DeleteFollow)
+		routes.POST("/:id/subcriptions", controller.CreateFollow)
+		routes.DELETE("/:id/subcriptions", controller.DeleteFollow)
 
 		routes.POST("/:id/reports", controller.CreateReport)
 		routes.DELETE("/:id/reports", controller.DeleteReport)

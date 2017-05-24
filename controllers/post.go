@@ -54,6 +54,7 @@ func (controller PostController) Get(c *gin.Context) {
 	postID, errParseInt := strconv.ParseInt(c.Param("id"), 10, 64)
 	if errParseInt != nil {
 		helpers.ResponseBadRequestJSON(c, configs.EcParam, "Invalid post id")
+		return
 	}
 	// check exists
 	exist, errCheckExistPost := controller.Service.CheckExistPost(postID)
@@ -91,7 +92,8 @@ func (controller PostController) Get(c *gin.Context) {
 func (controller PostController) Delete(c *gin.Context) {
 	postID, errParseInt := strconv.ParseInt(c.Param("id"), 10, 64)
 	if errParseInt != nil {
-		helpers.ResponseBadRequestJSON(c, configs.EcParam, "Invalid post id")
+		helpers.ResponseBadRequestJSON(c, configs.EcParam, "Invalid post_id")
+		return
 	}
 	// check exists
 	exist, errCheckExistPost := controller.Service.CheckExistPost(postID)

@@ -18,3 +18,10 @@ type GroupMembershipSentRequest struct {
 	GroupID int64  `json:"groupid"`
 	Message string `json:"message,omitempty"`
 }
+
+// InfoGroupMembershipRequest struct to update
+type InfoGroupMembershipRequest struct {
+	RequestMessage  string `json:"request_message,omitempty"`
+	ResponseMessage string `json:"response_message,omitempty"`
+	Status          int    `json:"status"` // 1: Pending; 2: Accepted; 3: Declined
+}

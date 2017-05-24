@@ -18,13 +18,14 @@ type GroupServiceInterface interface {
 	Update(groupID int64, newGroup models.InfoGroup) (models.Group, error)
 	CheckExistGroup(groupID int64) (bool, error)
 	CheckUserRole(groupID int64, userID int64) (int, error)
+	GetJoinedGroup(params helpers.ParamsGetAll, userID int64, myUserID int64) ([]models.GroupJoin, error)
 
 	GetMembers(params helpers.ParamsGetAll, groupID int64) ([]models.GroupMember, error)
 	GetPendingUsers(params helpers.ParamsGetAll, groupID int64) ([]models.PendingUser, error)
 	GetBlockedUsers(params helpers.ParamsGetAll, groupID int64) ([]models.UserFollowObject, error)
 
 	CreateMember(groupID int64, userID int64) (bool, error)
-	CreateRequest(models.GroupMembershipSentRequest) (bool, error)
+
 	IncreasePosts(groupID int64) (bool, error)
 	DecreasePosts(groupID int64) (bool, error)
 }
@@ -57,7 +58,10 @@ func (service groupService) GetAll(params helpers.ParamsGetAll, myUserID int64) 
 					g.created_at AS created_at,
 					g.updated_at AS updated_at,
 					g.status AS status,
-					exists((me)-[:JOIN]->(g)) AS is_joined
+					exists((me)-[:JOIN]->(g)) AS is_joined,
+					exists((me)-[:REQUEST{status:1}]->(g)) AS is_pending,
+					g.privacy = 2 AS can_request,
+					exists((me)-[:ADMIN]->(g)) AS is_admin
 				ORDER BY %s
 				SKIP {skip}
 				LIMIT {limit}
@@ -138,19 +142,18 @@ func (service groupService) Delete(groupID int64) (bool, error) {
 // int64 error
 func (service groupService) Create(group models.Group, myUserID int64) (int64, error) {
 	p := neoism.Props{
-		"name":        group.Name,
-		"description": group.Description,
-		"avatar":      group.Avatar,
-		"cover":       group.Cover,
-		"privacy":     group.Privacy,
-		"requests":    0,
-		"members":     0,
-		"posts":       0,
-		"status":      0,
+		"name":             group.Name,
+		"description":      group.Description,
+		"avatar":           group.Avatar,
+		"cover":            group.Cover,
+		"privacy":          group.Privacy,
+		"pending_requests": 0,
+		"members":          0,
+		"posts":            0,
 	}
 	stmt := `
 			MATCH(u:User) WHERE ID(u) = {myUserID}
-			CREATE (g:Group{ props } )<-[r:CREATE]-(u)
+			CREATE (g:Group{props})<-[r:CREATE]-(u)
 			SET g.created_at = TIMESTAMP()
 			RETURN ID(g) as id
 			`
@@ -185,7 +188,7 @@ func (service groupService) Update(groupID int64, newGroup models.InfoGroup) (mo
 		WHERE ID(g) = {groupID}
 		SET g+= {p}, g.updated_at = TIMESTAMP()
 		RETURN
-			properties(g) AS group
+			g{id:ID(g), .*} AS group
 		`
 	params := neoism.Props{
 		"groupID": groupID,
@@ -255,10 +258,10 @@ func (service groupService) CheckUserRole(groupID int64, userID int64) (int, err
 	MATCH (u:User) WHERE ID(u) = {userID}
 	RETURN
 		exists((u)-[:JOIN]->(g)) AS joined,
-		exists((u)-[:ADMIN]->(g)) AS is_admin,
+		exists((u)-[:ADMIN|:CREATE]->(g)) AS is_admin,
 		exists((u)-[:REQUEST{status:"pending"}]->(g)) AS pending,
 		exists((u)-[:REQUEST{status:"declined"}]->(g)) AS declined,
-		exists((u)-[:REQUEST{status:"blocked"}]->(g)) AS blocked,
+		exists((u)-[:REQUEST{status:"blocked"}]->(g)) AS blocked
 	`
 
 	paramsQuery := neoism.Props{
@@ -303,20 +306,72 @@ func (service groupService) CheckUserRole(groupID int64, userID int64) (int, err
 	return -1, nil
 }
 
+// GetJoinedGroup func
+// helpers.ParamsGetAll int64 int64
+// []models.group error
+func (service groupService) GetJoinedGroup(params helpers.ParamsGetAll, userID int64, myUserID int64) ([]models.GroupJoin, error) {
+	var stmt string
+	stmt = fmt.Sprintf(`
+				MATCH(me:User) WHERE ID(me) = {myuserid}
+				MATCH (g:Group)<-[j:JOIN|ADMIN]-(u:User)
+				WHERE ID(u) = {userID}
+				RETURN
+					ID(g) AS id,
+					g.name AS name,
+					g.description AS description,
+					g.members AS members,
+					g.posts AS posts,
+					g.avatar AS avatar,
+					g.cover AS cover,
+					g.privacy AS privacy,
+					g.created_at AS created_at,
+					g.updated_at AS updated_at,
+					g.status AS status,
+					exists((me)-[:JOIN]->(g)) AS is_joined
+					exists((me)-[:REQUEST{status:1}]->(g)) AS is_pending
+					p.privacy = 2 AS can_request
+					exists((me)-[:ADMIN]->(g)) AS is_admin
+				ORDER BY %s
+				SKIP {skip}
+				LIMIT {limit}
+				`, params.Sort)
+
+	paramsQuery := map[string]interface{}{
+		"myuserid": myUserID,
+		"userID":   userID,
+		"skip":     params.Skip,
+		"limit":    params.Limit,
+	}
+	res := []models.GroupJoin{}
+	cq := neoism.CypherQuery{
+		Statement:  stmt,
+		Parameters: paramsQuery,
+		Result:     &res,
+	}
+	err := conn.Cypher(&cq)
+	if err != nil {
+		return nil, err
+	}
+	if len(res) > 0 {
+		return res, nil
+	}
+	return nil, nil
+}
+
 // GetMembers func
 // helpers.ParamsGetAll int64
 // []models.UserJoinedObject error
 func (service groupService) GetMembers(params helpers.ParamsGetAll, groupID int64) ([]models.GroupMember, error) {
 	stmt := fmt.Sprintf(`
-	MATCH (g:Group)<-[j:JOIN]-(u:User)
-	WHERE ID(g)= {groupID}
-	WITH
-		u{id:ID(u),joined_at:j.created_at,joined_by:"", .*} AS user
-	ORDER BY %s
-	SKIP {skip}
-	LIMIT {limit}
-	RETURN  collect(user) AS users
-	`, params.Sort)
+		MATCH (g:Group)<-[j:JOIN]-(u:User)
+		WHERE ID(g)= {groupID}
+		WITH
+			u{id:ID(u),joined_at:j.created_at,joined_by:"", .*} AS user
+		ORDER BY %s
+		SKIP {skip}
+		LIMIT {limit}
+		RETURN  collect(user) AS users
+		`, params.Sort)
 
 	paramsQuery := neoism.Props{
 		"groupID": groupID,
@@ -379,47 +434,6 @@ func (service groupService) CreateMember(groupID int64, userID int64) (bool, err
 	params := map[string]interface{}{
 		"userID":  userID,
 		"groupID": groupID,
-	}
-	res := []struct {
-		ID int64 `json:"id"`
-	}{}
-	cq := neoism.CypherQuery{
-		Statement:  stmt,
-		Parameters: params,
-		Result:     &res,
-	}
-	err := conn.Cypher(&cq)
-	if err != nil {
-		return false, err
-	}
-	if len(res) > 0 {
-		if res[0].ID >= 0 {
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-// CreateRequest func
-// int64 int64
-// bool error
-func (service groupService) CreateRequest(request models.GroupMembershipSentRequest) (bool, error) {
-	// p := neoism.Props{
-	// 	"name":        group.Name,
-	// 	"description": group.Description,
-	// 	"avatar":      group.Avatar,
-	// }
-	stmt := `
-			MATCH(u:User) WHERE ID(u) = {userID}
-			MATCH(g:Group) WHERE ID(g) = {groupID}
-			CREATE (g)<-[r:REQUEST]-(u)
-			SET r.created_at = TIMESTAMP(), r.status = 1, r.request_message = {message}, g.pending_requests=g.pending_requests+1
-			RETURN ID(r) as id
-			`
-	params := map[string]interface{}{
-		"userID":  request.UserID,
-		"groupID": request.GroupID,
-		"message": request.Message,
 	}
 	res := []struct {
 		ID int64 `json:"id"`
