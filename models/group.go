@@ -37,7 +37,6 @@ type GroupObject struct {
 // GroupJoin struct
 type GroupJoin struct {
 	Group
-	IsJoined bool `json:"is_joined,omitempty"`
 }
 
 // InfoGroup struct to update method

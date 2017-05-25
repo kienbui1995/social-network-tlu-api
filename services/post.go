@@ -87,8 +87,7 @@ func (service postService) GetAll(params helpers.ParamsGetAll, userID int64, myU
 				WHERE s.privacy = 1 OR (s.privacy = 2 AND exists((me)-[:FOLLOW]->(u))) OR {userid} = {myuserid}
 				RETURN
 					ID(s) AS id,
-					substring(u.message,0,250) AS message, length(u.message)>250 AS summary,
-					case s.photo when null then "" else s.photo end AS photo,
+					substring(s.message,0,250) AS message, length(s.message)>250 AS summary,
 					s.created_at AS created_at, s.updated_at AS updated_at,
 					case s.privacy when null then 1 else s.privacy end AS privacy, case s.status when null then 1 else s.status end AS status,
 					s.likes AS likes, s.comments AS comments, s.shares AS shares,

@@ -80,6 +80,8 @@ const (
 	SBlocked  = "blocked"
 	IAdmin    = 6
 	SAdmin    = "admin"
+	ICanJoin  = 7
+	SCanJoin  = "can_join"
 )
 
 // Const type in get users in post/comment

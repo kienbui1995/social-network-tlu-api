@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/kienbui1995/social-network-tlu-api/configs"
 	"github.com/kienbui1995/social-network-tlu-api/helpers"
+	"github.com/kienbui1995/social-network-tlu-api/models"
 	"github.com/kienbui1995/social-network-tlu-api/services"
 )
 
@@ -157,6 +158,10 @@ func (controller GroupMembershipController) Create(c *gin.Context) {
 		return
 	}
 
+	if role != configs.ICanJoin {
+		helpers.ResponseForbiddenJSON(c, configs.EcExisObject, "Can't create this membership")
+		return
+	}
 	membershipID, errCreate := controller.Service.Create(groupID, myUserID)
 	if errCreate != nil {
 		helpers.ResponseServerErrorJSON(c)
@@ -204,14 +209,12 @@ func (controller GroupMembershipController) Update(c *gin.Context) {
 		helpers.ResponseForbiddenJSON(c, configs.EcPermission, "Permissions error")
 		return
 	}
-	json := struct {
-		Status int `json:"status"`
-	}{}
+	json := models.GroupMembership{}
 	if errBind := c.BindJSON(&json); errBind != nil {
 		helpers.ResponseBadRequestJSON(c, configs.EcParam, "BindJSON: %s\n"+errBind.Error())
 		return
 	}
-	membership.Status = json.Status
+	helpers.Replace(membership, &json)
 	updatedMembership, errUpdate := controller.Service.Update(membership)
 	if errUpdate != nil {
 		helpers.ResponseServerErrorJSON(c)

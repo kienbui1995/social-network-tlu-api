@@ -263,10 +263,11 @@ func (service groupService) CheckUserRole(groupID int64, userID int64) (int, err
 	MATCH (u:User) WHERE ID(u) = {userID}
 	RETURN
 		exists((u)-[:JOIN{role:1}]->(g)) AS is_member,
-		exists((u)-[:JOIN{role:2}]->(g)) OR exists((u)-[:JOIN{status:3}]->(g)) AS is_admin,
+		exists((u)-[:JOIN{role:2}]->(g)) OR exists((u)-[:JOIN{role:3}]->(g)) AS is_admin,
+		exists((u)-[:JOIN{role:4}]->(g)) AS blocked,
 		exists((u)-[:REQUEST{status:1}]->(g)) AS pending,
 		exists((u)-[:REQUEST{status:2}]->(g)) AS declined,
-		exists((u)-[:JOIN{role:4}]->(g)) AS blocked
+		exists((u)-[:JOIN]->(g))=false AND g.privacy=1  AS can_join
 	`
 
 	paramsQuery := neoism.Props{
@@ -279,6 +280,7 @@ func (service groupService) CheckUserRole(groupID int64, userID int64) (int, err
 		Pending  bool `json:"pending"`
 		Declined bool `json:"declined"`
 		Blocked  bool `json:"blocked"`
+		CanJoin  bool `json:"can_join"`
 	}{}
 
 	cq := neoism.CypherQuery{

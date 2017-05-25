@@ -40,13 +40,13 @@ func (controller PostController) GetAll(c *gin.Context) {
 	}
 	params.Sort = c.DefaultQuery("sort", configs.SSort)
 	params.Sort, _ = helpers.ConvertSort(params.Sort)
-	users, errGetAll := controller.Service.GetAll(params, userID, myUserID)
+	posts, errGetAll := controller.Service.GetAll(params, userID, myUserID)
 	if errGetAll != nil {
 		helpers.ResponseServerErrorJSON(c)
 		fmt.Printf("GetAll service: %s\n", errGetAll.Error())
 		return
 	}
-	helpers.ResponseEntityListJSON(c, 1, "Get user list successful", users, params, len(users))
+	helpers.ResponseEntityListJSON(c, 1, "Get user list successful", posts, params, len(posts))
 }
 
 // Get func
