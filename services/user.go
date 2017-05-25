@@ -356,7 +356,6 @@ func (service userService) CheckExistUser(id int64) (bool, error) {
 		if res[0].ID == id {
 			return true, nil
 		}
-		return false, nil
 	}
-	return false, errors.New("CheckExistUser fail")
+	return false, nil
 }

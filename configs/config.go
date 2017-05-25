@@ -54,6 +54,18 @@ const (
 	SPrivateGroup = "private"
 )
 
+// const role member in groupID
+const (
+	IRoleMember  = 1
+	SRoleMember  = "member"
+	IRoleAdmin   = 2
+	SRoleAdmin   = "admin"
+	IRoleCreator = 3
+	SCreator     = "creator"
+	IRoleBlock   = 4
+	SRoleBlock   = "block"
+)
+
 // Const status group membership request
 const (
 	IPending  = 1

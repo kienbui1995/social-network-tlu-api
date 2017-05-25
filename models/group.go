@@ -16,8 +16,10 @@ type Group struct {
 	UpdatedAt       int64  `json:"updated_at,omitempty"`
 	Status          int    `json:"status,omitempty"`
 	CanRequest      bool   `json:"can_request,omitempty"`
+	CanJoin         bool   `json:"can_join,omitempty"`
 	IsPending       bool   `json:"is_pending,omitempty"`
 	IsAdmin         bool   `json:"is_admin,omitempty"`
+	IsMember        bool   `json:"is_member,omitempty"`
 }
 
 // IsEmpty func
@@ -35,7 +37,7 @@ type GroupObject struct {
 // GroupJoin struct
 type GroupJoin struct {
 	Group
-	IsJoined bool `json:"is_joined"`
+	IsJoined bool `json:"is_joined,omitempty"`
 }
 
 // InfoGroup struct to update method

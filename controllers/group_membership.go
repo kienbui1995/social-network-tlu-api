@@ -149,9 +149,11 @@ func (controller GroupMembershipController) Create(c *gin.Context) {
 	}
 
 	if role == configs.IAdmin {
+		helpers.ResponseBadRequestJSON(c, configs.EcExisObject, "Exist membership")
 		return
 	}
 	if role == configs.IMember {
+		helpers.ResponseBadRequestJSON(c, configs.EcExisObject, "Exist membership")
 		return
 	}
 

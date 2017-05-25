@@ -337,7 +337,8 @@ func (controller GroupController) GetUsers(c *gin.Context) {
 func (controller GroupController) GetJoinedGroup(c *gin.Context) {
 	userID, errParseInt := strconv.ParseInt(c.Param("id"), 10, 64)
 	if errParseInt != nil {
-		helpers.ResponseBadRequestJSON(c, configs.EcParam, "Invalid user_id")
+		helpers.ResponseBadRequestJSON(c, configs.EcParamUserID, "Invalid user_id")
+		return
 	}
 
 	// check exist membership
@@ -348,7 +349,7 @@ func (controller GroupController) GetJoinedGroup(c *gin.Context) {
 		return
 	}
 	if exist != true {
-		helpers.ResponseNotFoundJSON(c, configs.EcAuthNoExistUser, "Not exist user")
+		helpers.ResponseNotFoundJSON(c, configs.EcAuthNoExistUser, "No exist user")
 		return
 	}
 

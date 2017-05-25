@@ -7,7 +7,8 @@ type GroupMembership struct {
 	UpdatedAt int64       `json:"updated_at,omitempty"`
 	User      UserObject  `json:"user"`
 	Group     GroupObject `json:"group"`
-	Status    int         `json:"status"` // 1: Joined; 2: Blocked;
+	Role      int         `json:"role,omitempty"` // 1:member; 2: admin; 3: creator 4: block
+	Status    int         `json:"status"`
 }
 
 // IsEmpty func to check membership is null

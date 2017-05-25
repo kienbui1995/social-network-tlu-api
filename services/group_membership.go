@@ -33,7 +33,7 @@ func NewGroupMembershipService() groupMembershipService {
 func (service groupMembershipService) GetAll(params helpers.ParamsGetAll, groupID int64) ([]models.GroupMembership, error) {
 	stmt := fmt.Sprintf(`
 			MATCH (g:Group)<-[r:JOIN]-(u:User)
-			WHERE ID(g) = {groupID}
+			WHERE ID(g) = {groupID} AND r.role <>4
 			WITH
 				r{id:ID(r), .status, .created_at, .updated_at,
 					group: g{id:ID(g), .name, .avatar},
@@ -80,7 +80,7 @@ func (service groupMembershipService) Create(groupID int64, userID int64) (int64
 			MATCH(u:User) WHERE ID(u) = {userID}
 			MATCH(g:Group) WHERE ID(g) = {groupID}
 			CREATE (g)<-[r:JOIN]-(u)
-			SET r.created_at = TIMESTAMP(), r.status = 1, g.members=g.members+1
+			SET r.role=1, r.created_at = TIMESTAMP(), r.status = 1, g.members=g.members+1
 			RETURN ID(r) as id
 			`
 	params := map[string]interface{}{
@@ -115,7 +115,7 @@ func (service groupMembershipService) Get(membershipID int64) (models.GroupMembe
 			MATCH (g:Group)<-[r:JOIN]-(u:User)
 			WHERE ID(r) = {membershipID}
 			RETURN
-				ID(r) AS id, r.created_at AS created_at, r.updated_at AS updated_at, r.status AS status,
+				ID(r) AS id, r.created_at AS created_at, r.updated_at AS updated_at, r.role AS role, r.status AS status,
 				u{id:ID(u), .username, .full_name, .avatar} AS user,
 				g{id:ID(g), .name, .avatar} AS group
 			`

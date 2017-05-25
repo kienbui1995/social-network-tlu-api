@@ -58,10 +58,11 @@ func (service groupService) GetAll(params helpers.ParamsGetAll, myUserID int64) 
 					g.created_at AS created_at,
 					g.updated_at AS updated_at,
 					g.status AS status,
-					exists((me)-[:JOIN]->(g)) AS is_joined,
+					exists((me)-[:JOIN{role:1}]->(g)) AS is_member,
 					exists((me)-[:REQUEST{status:1}]->(g)) AS is_pending,
-					g.privacy = 2 AS can_request,
-					exists((me)-[:ADMIN]->(g)) AS is_admin
+					g.privacy = 2  and exists((me)-[:JOIN]->(g))=false AS can_request,
+					g.privacy = 1  and exists((me)-[:JOIN]->(g))=false AS can_join,
+					exists((me)-[:JOIN{role:2}]->(g)) OR exists((me)-[:JOIN{role:3}]->(g)) AS is_admin
 				ORDER BY %s
 				SKIP {skip}
 				LIMIT {limit}
@@ -107,7 +108,11 @@ func (service groupService) Get(groupID int64, myUserID int64) (models.GroupJoin
 					g.created_at AS created_at,
 					g.updated_at AS updated_at,
 					g.status AS status,
-					exists((me)-[:JOIN]->(g)) AS is_joined
+					exists((me)-[:JOIN{role:1}]->(g)) AS is_member,
+					exists((me)-[:REQUEST{status:1}]->(g)) AS is_pending,
+					g.privacy = 2  AND exists((me)-[:JOIN]->(g))=false AND exists((me)-[:REQUEST]->(g))=false AS can_request,
+					g.privacy = 1  AND exists((me)-[:JOIN]->(g))=false AS can_join,
+					exists((me)-[:JOIN{role:2}]->(g)) OR exists((me)-[:JOIN{role:3}]->(g)) AS is_admin
 				`
 
 	paramsQuery := map[string]interface{}{
@@ -153,8 +158,8 @@ func (service groupService) Create(group models.Group, myUserID int64) (int64, e
 	}
 	stmt := `
 			MATCH(u:User) WHERE ID(u) = {myUserID}
-			CREATE (g:Group{props})<-[r:CREATE]-(u)
-			SET g.created_at = TIMESTAMP()
+			CREATE (g:Group{props})<-[r:JOIN{role:3, status:1, created_at: TIMESTAMP()}]-(u)
+			SET g.created_at = TIMESTAMP(), g.members= 1
 			RETURN ID(g) as id
 			`
 	params := map[string]interface{}{
@@ -257,11 +262,11 @@ func (service groupService) CheckUserRole(groupID int64, userID int64) (int, err
 	MATCH (g:Group)	WHERE ID(g)= {groupID}
 	MATCH (u:User) WHERE ID(u) = {userID}
 	RETURN
-		exists((u)-[:JOIN]->(g)) AS joined,
-		exists((u)-[:ADMIN|:CREATE]->(g)) AS is_admin,
-		exists((u)-[:REQUEST{status:"pending"}]->(g)) AS pending,
-		exists((u)-[:REQUEST{status:"declined"}]->(g)) AS declined,
-		exists((u)-[:REQUEST{status:"blocked"}]->(g)) AS blocked
+		exists((u)-[:JOIN{role:1}]->(g)) AS is_member,
+		exists((u)-[:JOIN{role:2}]->(g)) OR exists((u)-[:JOIN{status:3}]->(g)) AS is_admin,
+		exists((u)-[:REQUEST{status:1}]->(g)) AS pending,
+		exists((u)-[:REQUEST{status:2}]->(g)) AS declined,
+		exists((u)-[:JOIN{role:4}]->(g)) AS blocked
 	`
 
 	paramsQuery := neoism.Props{
@@ -269,7 +274,7 @@ func (service groupService) CheckUserRole(groupID int64, userID int64) (int, err
 		"userID":  userID,
 	}
 	res := []struct {
-		Joined   bool `json:"joined"`
+		IsMember bool `json:"is_member"`
 		IsAdmin  bool `json:"is_admin"`
 		Pending  bool `json:"pending"`
 		Declined bool `json:"declined"`
@@ -296,7 +301,7 @@ func (service groupService) CheckUserRole(groupID int64, userID int64) (int, err
 		if res[0].Pending {
 			return configs.IPending, nil
 		}
-		if res[0].Joined {
+		if res[0].IsMember {
 			return configs.IMember, nil
 		}
 		if res[0].IsAdmin {
@@ -313,7 +318,7 @@ func (service groupService) GetJoinedGroup(params helpers.ParamsGetAll, userID i
 	var stmt string
 	stmt = fmt.Sprintf(`
 				MATCH(me:User) WHERE ID(me) = {myuserid}
-				MATCH (g:Group)<-[j:JOIN|ADMIN]-(u:User)
+				MATCH (g:Group)<-[j:JOIN]-(u:User)
 				WHERE ID(u) = {userID}
 				RETURN
 					ID(g) AS id,
@@ -327,10 +332,11 @@ func (service groupService) GetJoinedGroup(params helpers.ParamsGetAll, userID i
 					g.created_at AS created_at,
 					g.updated_at AS updated_at,
 					g.status AS status,
-					exists((me)-[:JOIN]->(g)) AS is_joined
-					exists((me)-[:REQUEST{status:1}]->(g)) AS is_pending
-					p.privacy = 2 AS can_request
-					exists((me)-[:ADMIN]->(g)) AS is_admin
+					exists((me)-[:JOIN{role:1}]->(g)) AS is_member,
+					exists((me)-[:JOIN{role:2}]->(g)) AS is_admin,
+					exists((me)-[:REQUEST{status:1}]->(g)) AS is_pending,
+					g.privacy = 2  and exists((me)-[:JOIN]->(g))=false AS can_request,
+					g.privacy = 1  and exists((me)-[:JOIN]->(g))=false AS can_join,
 				ORDER BY %s
 				SKIP {skip}
 				LIMIT {limit}
@@ -364,7 +370,7 @@ func (service groupService) GetJoinedGroup(params helpers.ParamsGetAll, userID i
 func (service groupService) GetMembers(params helpers.ParamsGetAll, groupID int64) ([]models.GroupMember, error) {
 	stmt := fmt.Sprintf(`
 		MATCH (g:Group)<-[j:JOIN]-(u:User)
-		WHERE ID(g)= {groupID}
+		WHERE ID(g)= {groupID} AND j.role <> 4
 		WITH
 			u{id:ID(u),joined_at:j.created_at,joined_by:"", .*} AS user
 		ORDER BY %s
