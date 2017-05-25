@@ -35,15 +35,15 @@ func (service groupMembershipService) GetAll(params helpers.ParamsGetAll, groupI
 			MATCH (g:Group)<-[r:JOIN]-(u:User)
 			WHERE ID(g) = {groupID} AND r.role <>4
 			WITH
-				r{id:ID(r), .status, .created_at, .updated_at, .role,
-					group: g{id:ID(g), .name, .avatar},
+				r{id:ID(r), .*,
+			
 					user: u{id:ID(u), .username, .full_name, .avatar}
 					} AS membership
 			ORDER BY %s
 			SKIP {skip}
 			LIMIT {limit}
 			RETURN collect(membership) AS memberships
-			`, params.Sort)
+			`, "membership."+params.Sort)
 	paramsQuery := map[string]interface{}{
 		"groupID": groupID,
 		"skip":    params.Skip,
@@ -147,7 +147,7 @@ func (service groupMembershipService) Update(membership models.GroupMembership) 
 	stmt := `
 	MATCH (u:User)-[r:JOIN]->(g:Group)
 	WHERE ID(r) = {membershipID}
-	SET r += {p}, r.updated_at = TIMESTAMP()
+	SET r+={p}, r.updated_at = TIMESTAMP()
 	RETURN
 		ID(r) AS id, r.created_at AS created_at, r.updated_at AS updated_at,
  		r.role AS role, r.status AS status,

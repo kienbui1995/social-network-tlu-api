@@ -19,7 +19,7 @@ func AddRoutesGroupMemberships(r *gin.RouterGroup) {
 
 	routes := r.Group("/group_memberships")
 	{
-		routes.PUT("/:id", controller.Update)    // user blocked(...) by admin
+		routes.PUT("/:id", controller.Update)    // make admin block member by admin
 		routes.DELETE("/:id", controller.Delete) // user removed by admin
 
 	}

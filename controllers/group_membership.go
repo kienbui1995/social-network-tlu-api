@@ -215,7 +215,7 @@ func (controller GroupMembershipController) Update(c *gin.Context) {
 		return
 	}
 	helpers.Replace(membership, &json)
-	updatedMembership, errUpdate := controller.Service.Update(membership)
+	updatedMembership, errUpdate := controller.Service.Update(json)
 	if errUpdate != nil {
 		helpers.ResponseServerErrorJSON(c)
 		fmt.Printf("Update service: %s\n", errUpdate.Error())
@@ -226,6 +226,7 @@ func (controller GroupMembershipController) Update(c *gin.Context) {
 		fmt.Printf("Update service: don't update")
 		return
 	}
+
 	helpers.ResponseSuccessJSON(c, 1, "Update membership successful", updatedMembership)
 }
 

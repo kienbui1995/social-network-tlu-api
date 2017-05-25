@@ -15,7 +15,9 @@ func InitRoutes() *gin.Engine {
 
 	v1 := router.Group("")
 	{
-		//
+		//test
+		AddRouterTest(v1)
+
 		AddRoutesAccounts(v1)
 
 		v1.Use(middlewares.AuthRequired())

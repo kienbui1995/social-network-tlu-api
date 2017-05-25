@@ -309,6 +309,9 @@ func (service groupService) CheckUserRole(groupID int64, userID int64) (int, err
 		if res[0].IsAdmin {
 			return configs.IAdmin, nil
 		}
+		if res[0].CanJoin {
+			return configs.ICanJoin, nil
+		}
 	}
 	return -1, nil
 }
