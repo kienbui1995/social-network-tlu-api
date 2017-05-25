@@ -376,6 +376,6 @@ func (controller GroupController) GetJoinedGroup(c *gin.Context) {
 		fmt.Printf("GetJoinedGroup service: %s\n", errGetJoinedGroup.Error())
 		return
 	}
-	helpers.ResponseEntityListJSON(c, 1, "Get groups successful", groups, params, len(groups))
+	helpers.ResponseEntityListJSON(c, 1, "Get joined groups successful", groups, params, len(groups))
 	return
 }

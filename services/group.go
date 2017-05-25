@@ -333,10 +333,10 @@ func (service groupService) GetJoinedGroup(params helpers.ParamsGetAll, userID i
 					g.updated_at AS updated_at,
 					g.status AS status,
 					exists((me)-[:JOIN{role:1}]->(g)) AS is_member,
-					exists((me)-[:JOIN{role:2}]->(g)) AS is_admin,
+					exists((me)-[:JOIN{role:2}]->(g)) OR exists((me)-[:JOIN{role:3}]->(g)) AS is_admin,
 					exists((me)-[:REQUEST{status:1}]->(g)) AS is_pending,
 					g.privacy = 2  and exists((me)-[:JOIN]->(g))=false AS can_request,
-					g.privacy = 1  and exists((me)-[:JOIN]->(g))=false AS can_join,
+					g.privacy = 1  and exists((me)-[:JOIN]->(g))=false AS can_join
 				ORDER BY %s
 				SKIP {skip}
 				LIMIT {limit}
@@ -433,7 +433,7 @@ func (service groupService) CreateMember(groupID int64, userID int64) (bool, err
 	stmt := `
 			MATCH(u:User) WHERE ID(u) = {userID}
 			MATCH(g:Group) WHERE ID(g) = {groupID}
-			CREATE (g)<-[r:JOIN]-(u)
+			CREATE (g)<-[r:JOIN{role:1, status:1}]-(u)
 			SET r.created_at = TIMESTAMP()
 			RETURN ID(r) as id
 			`

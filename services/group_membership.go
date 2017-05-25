@@ -22,7 +22,7 @@ type GroupMembershipServiceInterface interface {
 // groupMembershipService struct
 type groupMembershipService struct{}
 
-// NewGroupMemberShipService to constructor
+// NewGroupMembershipService to constructor
 func NewGroupMembershipService() groupMembershipService {
 	return groupMembershipService{}
 }
@@ -150,7 +150,7 @@ func (service groupMembershipService) Update(membership models.GroupMembership) 
 	SET u += {p}, r.updated_at = TIMESTAMP()
 	RETURN
 		ID(r) AS id, r.created_at AS created_at, r.updated_at AS updated_at,
-		r.request_message AS request_message, r.response_message AS response_message, r.status AS status,
+ 		r.role AS role, r.status AS status,
 		u{id:ID(u), .username, .full_name, .avatar} AS user,
 		g{id:ID(g), .name, .avatar} AS group
 	`
