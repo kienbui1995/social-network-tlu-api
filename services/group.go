@@ -60,7 +60,7 @@ func (service groupService) GetAll(params helpers.ParamsGetAll, myUserID int64) 
 					g.status AS status,
 					exists((me)-[:JOIN{role:1}]->(g)) AS is_member,
 					exists((me)-[:REQUEST{status:1}]->(g)) AS is_pending,
-					g.privacy = 2  and exists((me)-[:JOIN]->(g))=false AS can_request,
+					g.privacy = 2  and exists((me)-[:JOIN]->(g))=false AND exists((me)-[:REQUEST{status:1}]->(g))=false AS can_request,
 					g.privacy = 1  and exists((me)-[:JOIN]->(g))=false AS can_join,
 					exists((me)-[:JOIN{role:2}]->(g)) OR exists((me)-[:JOIN{role:3}]->(g)) AS is_admin
 				ORDER BY %s
@@ -109,10 +109,10 @@ func (service groupService) Get(groupID int64, myUserID int64) (models.GroupJoin
 					g.updated_at AS updated_at,
 					g.status AS status,
 					exists((me)-[:JOIN{role:1}]->(g)) AS is_member,
+					exists((me)-[:JOIN{role:2}]->(g)) OR exists((me)-[:JOIN{role:3}]->(g)) AS is_admin,
 					exists((me)-[:REQUEST{status:1}]->(g)) AS is_pending,
-					g.privacy = 2  AND exists((me)-[:JOIN]->(g))=false AND exists((me)-[:REQUEST]->(g))=false AS can_request,
-					g.privacy = 1  AND exists((me)-[:JOIN]->(g))=false AS can_join,
-					exists((me)-[:JOIN{role:2}]->(g)) OR exists((me)-[:JOIN{role:3}]->(g)) AS is_admin
+					exists((me)-[:JOIN]->(g))=false AND g.privacy=1  AS can_join,
+					exists((me)-[:JOIN]->(g))=false AND g.privacy=2 AND exists((me)-[:REQUEST{status:1}]->(g))=false AS can_request
 				`
 
 	paramsQuery := map[string]interface{}{
@@ -344,8 +344,8 @@ func (service groupService) GetJoinedGroup(params helpers.ParamsGetAll, userID i
 					exists((me)-[:JOIN{role:1}]->(g)) AS is_member,
 					exists((me)-[:JOIN{role:2}]->(g)) OR exists((me)-[:JOIN{role:3}]->(g)) AS is_admin,
 					exists((me)-[:REQUEST{status:1}]->(g)) AS is_pending,
-					g.privacy = 2  and exists((me)-[:JOIN]->(g))=false AS can_request,
-					g.privacy = 1  and exists((me)-[:JOIN]->(g))=false AS can_join
+					exists((me)-[:JOIN]->(g))=false AND g.privacy=1  AS can_join,
+					exists((me)-[:JOIN]->(g))=false AND g.privacy=2 AND exists((me)-[:REQUEST{status:1}]->(g))=false AS can_request
 				ORDER BY %s
 				SKIP {skip}
 				LIMIT {limit}
