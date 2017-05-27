@@ -68,20 +68,22 @@ const (
 
 // Const status group membership request
 const (
-	IPending  = 1
-	SPending  = "pending"
-	IAccepted = 2
-	SAccepted = "accepted"
-	IDeclined = 3
-	SDeclined = "declined"
-	IMember   = 4
-	SMember   = "member"
-	IBlocked  = 5
-	SBlocked  = "blocked"
-	IAdmin    = 6
-	SAdmin    = "admin"
-	ICanJoin  = 7
-	SCanJoin  = "can_join"
+	IPending    = 1
+	SPending    = "pending"
+	IAccepted   = 2
+	SAccepted   = "accepted"
+	IDeclined   = 3
+	SDeclined   = "declined"
+	IMember     = 4
+	SMember     = "member"
+	IBlocked    = 5
+	SBlocked    = "blocked"
+	IAdmin      = 6
+	SAdmin      = "admin"
+	ICanJoin    = 7
+	SCanJoin    = "can_join"
+	ICanRequest = 8
+	SCanRequest = "can_request"
 )
 
 // Const type in get users in post/comment

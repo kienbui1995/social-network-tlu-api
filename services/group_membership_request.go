@@ -14,7 +14,7 @@ type GroupMembershipRequestServiceInterface interface {
 	Get(requestID int64) (models.GroupMembershipRequest, error)
 	Delete(requestID int64) (bool, error)
 	DeleteByUser(groupID int64, userID int64) (bool, error)
-	Create(request models.GroupMembershipSentRequest) (bool, error)
+	Create(groupID int64, userID int64, message string) (bool, error)
 	Update(requestID int64, request models.GroupMembershipRequest) (models.GroupMembershipRequest, error)
 	CheckExistRequest(groupID int64, userID int64) (bool, error)
 }
@@ -33,12 +33,11 @@ func NewGroupMembershipRequestService() groupMembershipRequestService {
 func (service groupMembershipRequestService) GetAll(params helpers.ParamsGetAll, groupID int64) ([]models.GroupMembershipRequest, error) {
 	stmt := fmt.Sprintf(`
 			MATCH (g:Group)<-[r:REQUEST]-(u:User)
-			WHERE ID(g) = {groupID} AND r.status = {status}
+			WHERE ID(g) = {groupID} AND r.status = 1
 			RETURN
 				ID(r) AS id, r.created_at AS created_at, r.updated_at AS updated_at,
 				r.request_message AS request_message, r.response_message AS response_message, r.status AS status,
-				u{id:ID(u), .username, .full_name, .avatar} AS user,
-				g{id:ID(g), .name, .avatar} AS group
+				u{id:ID(u), .username, .full_name, .avatar} AS user
 			ORDER BY %s
 			SKIP {skip}
 			LIMIT {limit}
@@ -47,7 +46,6 @@ func (service groupMembershipRequestService) GetAll(params helpers.ParamsGetAll,
 		"groupID": groupID,
 		"skip":    params.Skip,
 		"limit":   params.Limit,
-		"status":  params.Type,
 	}
 	res := []models.GroupMembershipRequest{}
 	cq := neoism.CypherQuery{
@@ -70,7 +68,7 @@ func (service groupMembershipRequestService) GetAll(params helpers.ParamsGetAll,
 // Create func
 // models.GroupMembershipSentRequest
 // bool error
-func (service groupMembershipRequestService) Create(request models.GroupMembershipSentRequest) (bool, error) {
+func (service groupMembershipRequestService) Create(groupID int64, userID int64, message string) (bool, error) {
 	// p := neoism.Props{
 	// 	"name":        group.Name,
 	// 	"description": group.Description,
@@ -84,9 +82,9 @@ func (service groupMembershipRequestService) Create(request models.GroupMembersh
 			RETURN ID(r) as id
 			`
 	params := map[string]interface{}{
-		"userID":  request.UserID,
-		"groupID": request.GroupID,
-		"message": request.Message,
+		"userID":  userID,
+		"groupID": groupID,
+		"message": message,
 	}
 	res := []struct {
 		ID int64 `json:"id"`
@@ -154,7 +152,10 @@ func (service groupMembershipRequestService) Update(requestID int64, request mod
 	stmt := `
 	MATCH (u:User)-[r:REQUEST]->(g:Group)
 	WHERE ID(r) = {requestID}
-	SET u += {p}, r.updated_at = TIMESTAMP()
+	SET r.updated_at = TIMESTAMP(), r.request_message = {request_message}, r.response_message = {response_message},
+	g.pending_requests = CASE WHEN r.status = 1 AND {status} in [2,3]  THEN g.pending_requests-1
+														WHEN r.status in [2,3] ADN {status} = 1 THEN g.pending_requests+1
+											 END
 	RETURN
 		ID(r) AS id, r.created_at AS created_at, r.updated_at AS updated_at,
 		r.request_message AS request_message, r.response_message AS response_message, r.status AS status,
@@ -163,8 +164,10 @@ func (service groupMembershipRequestService) Update(requestID int64, request mod
 	`
 
 	params := neoism.Props{
-		"requestID": requestID,
-		"p":         request,
+		"requestID":        requestID,
+		"status":           request.Status,
+		"request_message":  request.RequestMessage,
+		"response_message": request.ResponseMessage,
 	}
 
 	res := []models.GroupMembershipRequest{}
@@ -192,7 +195,8 @@ func (service groupMembershipRequestService) Update(requestID int64, request mod
 func (service groupMembershipRequestService) Delete(requestID int64) (bool, error) {
 	stmt := `
 			MATCH (g:Group)<-[r:REQUEST]-(u:User)
-			WHERE ID(r) = {requestID}
+			WHERE ID(r) = {requestID} AND r.status = 1
+			SET g.pending_requests = g.pending_requests -1
 			DELETE r
 			`
 	params := map[string]interface{}{
@@ -216,7 +220,8 @@ func (service groupMembershipRequestService) Delete(requestID int64) (bool, erro
 func (service groupMembershipRequestService) DeleteByUser(groupID int64, userID int64) (bool, error) {
 	stmt := `
 			MATCH (g:Group)<-[r:REQUEST]-(u:User)
-			WHERE ID(g) = {groupID} AND ID(u) = {userID}
+			WHERE ID(g) = {groupID} AND ID(u) = {userID} AND  r.status = 1
+			SET g.pending_requests = g.pending_requests -1
 			DELETE r
 			`
 	params := map[string]interface{}{

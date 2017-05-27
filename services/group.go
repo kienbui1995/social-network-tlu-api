@@ -267,20 +267,21 @@ func (service groupService) CheckUserRole(groupID int64, userID int64) (int, err
 		exists((u)-[:JOIN{role:4}]->(g)) AS blocked,
 		exists((u)-[:REQUEST{status:1}]->(g)) AS pending,
 		exists((u)-[:REQUEST{status:2}]->(g)) AS declined,
-		exists((u)-[:JOIN]->(g))=false AND g.privacy=1  AS can_join
+		exists((u)-[:JOIN]->(g))=false AND g.privacy=1  AS can_join,
+		exists((u)-[:JOIN]->(g))=false AND g.privacy=2 AND exists((u)-[:REQUEST{status:1}]->(g))=false AS can_request
 	`
-
 	paramsQuery := neoism.Props{
 		"groupID": groupID,
 		"userID":  userID,
 	}
 	res := []struct {
-		IsMember bool `json:"is_member"`
-		IsAdmin  bool `json:"is_admin"`
-		Pending  bool `json:"pending"`
-		Declined bool `json:"declined"`
-		Blocked  bool `json:"blocked"`
-		CanJoin  bool `json:"can_join"`
+		IsMember   bool `json:"is_member"`
+		IsAdmin    bool `json:"is_admin"`
+		Pending    bool `json:"pending"`
+		Declined   bool `json:"declined"`
+		Blocked    bool `json:"blocked"`
+		CanJoin    bool `json:"can_join"`
+		CanRequest bool `json:"can_request"`
 	}{}
 
 	cq := neoism.CypherQuery{
@@ -311,6 +312,9 @@ func (service groupService) CheckUserRole(groupID int64, userID int64) (int, err
 		}
 		if res[0].CanJoin {
 			return configs.ICanJoin, nil
+		}
+		if res[0].CanRequest {
+			return configs.ICanRequest, nil
 		}
 	}
 	return -1, nil
