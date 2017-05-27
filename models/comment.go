@@ -24,10 +24,3 @@ type Comments []Comment
 func (c Comment) Validate() (bool, error) {
 	return govalidator.ValidateStruct(c)
 }
-
-// MentionObject struct
-type MentionObject struct {
-	ID     int64 `json:"id"`
-	Length int64 `json:"length"`
-	Offset int64 `json:"offset"`
-}

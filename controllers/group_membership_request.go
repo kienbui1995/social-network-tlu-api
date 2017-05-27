@@ -63,7 +63,7 @@ func (controller GroupMembershipRequestController) Create(c *gin.Context) {
 		return
 	}
 
-	if role != configs.ICanJoin {
+	if role == configs.ICanJoin {
 		helpers.ResponseForbiddenJSON(c, configs.EcPermission, "Can't create this group membership request")
 		return
 	}

@@ -188,8 +188,6 @@ func (controller PostController) Create(c *gin.Context) {
 	}
 	post := models.Post{}
 	helpers.Replace(json, &post)
-	fmt.Printf("json: %v\n", json)
-	fmt.Printf("json: %v\n", post)
 	postID, errCreate := controller.Service.Create(post, userID)
 	if errCreate == nil && postID >= 0 {
 		helpers.ResponseSuccessJSON(c, 1, "Create user post successful", map[string]interface{}{"id": postID})

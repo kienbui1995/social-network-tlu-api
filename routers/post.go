@@ -29,9 +29,17 @@ func AddRoutesPosts(r *gin.RouterGroup) {
 		routes.GET("/:id/users", controller.GetUsers)
 
 	}
-	routes2 := r.Group("/users")
+	// post with user
+	routesUser := r.Group("/users")
 	{
-		routes2.POST("/:id/posts", controller.Create)
-		routes2.GET("/:id/posts", controller.GetAll)
+		routesUser.POST("/:id/posts", controller.Create)
+		routesUser.GET("/:id/posts", controller.GetAll)
+	}
+
+	// post in group
+	routesGroup := r.Group("/groups")
+	{
+		routesGroup.POST("/:id/posts", controller.Create)
+		routesGroup.GET("/:id/posts", controller.GetAll)
 	}
 }

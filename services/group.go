@@ -20,7 +20,7 @@ type GroupServiceInterface interface {
 	CheckUserRole(groupID int64, userID int64) (int, error)
 	GetJoinedGroup(params helpers.ParamsGetAll, userID int64, myUserID int64) ([]models.GroupJoin, error)
 
-	GetMembers(params helpers.ParamsGetAll, groupID int64) ([]models.GroupMember, error)
+	GetMembers(params helpers.ParamsGetAll, groupID int64) ([]models.GroupMembership, error)
 	GetPendingUsers(params helpers.ParamsGetAll, groupID int64) ([]models.PendingUser, error)
 	GetBlockedUsers(params helpers.ParamsGetAll, groupID int64) ([]models.UserFollowObject, error)
 
@@ -376,7 +376,7 @@ func (service groupService) GetJoinedGroup(params helpers.ParamsGetAll, userID i
 // GetMembers func
 // helpers.ParamsGetAll int64
 // []models.UserJoinedObject error
-func (service groupService) GetMembers(params helpers.ParamsGetAll, groupID int64) ([]models.GroupMember, error) {
+func (service groupService) GetMembers(params helpers.ParamsGetAll, groupID int64) ([]models.GroupMembership, error) {
 	stmt := fmt.Sprintf(`
 		MATCH (g:Group)<-[j:JOIN]-(u:User)
 		WHERE ID(g)= {groupID} AND j.role <> 4
@@ -394,7 +394,7 @@ func (service groupService) GetMembers(params helpers.ParamsGetAll, groupID int6
 		"limit":   params.Limit,
 	}
 	res := []struct {
-		Users []models.GroupMember `json:"users"`
+		Users []models.GroupMembership `json:"users"`
 	}{}
 
 	cq := neoism.CypherQuery{

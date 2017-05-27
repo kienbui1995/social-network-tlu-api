@@ -56,14 +56,14 @@ func (controller GroupMembershipController) GetAll(c *gin.Context) {
 
 	// ParamsGetAll
 	params := helpers.ParamsGetAll{}
-	params.Type = configs.SCanMention
-	params.Type = c.DefaultQuery("type", params.Type)
+	// params.Type = configs.SCanMention
+	// params.Type = c.DefaultQuery("type", params.Type)
 	params.Skip, _ = strconv.Atoi(c.DefaultQuery("skip", configs.SSkip))
 	params.Limit, _ = strconv.Atoi(c.DefaultQuery("limit", configs.SLimit))
 	params.Sort = c.DefaultQuery("sort", configs.SSort)
 	params.Sort, _ = helpers.ConvertSort(params.Sort)
 
-	memberships, errGetAll := controller.Service.GetAll(params, groupID)
+	memberships, errGetAll := controller.Service.GetAll(params, groupID, myUserID)
 	if errGetAll != nil {
 		helpers.ResponseServerErrorJSON(c)
 		fmt.Printf("GetAll service: %s\n", errGetAll.Error())

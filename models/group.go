@@ -27,13 +27,6 @@ func (group Group) IsEmpty() bool {
 	return group == Group{}
 }
 
-// GroupObject struct
-type GroupObject struct {
-	ID     int64  `json:"id"`
-	Name   string `json:"name"`
-	Avatar string `json:"avatar"`
-}
-
 // GroupJoin struct
 type GroupJoin struct {
 	Group

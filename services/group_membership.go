@@ -10,7 +10,7 @@ import (
 
 // GroupMembershipServiceInterface include method list
 type GroupMembershipServiceInterface interface {
-	GetAll(params helpers.ParamsGetAll, groupID int64) ([]models.GroupMembership, error)
+	GetAll(params helpers.ParamsGetAll, groupID int64, myUserID int64) ([]models.GroupMembership, error)
 	Get(membershipID int64) (models.GroupMembership, error)
 	Delete(membershipID int64) (bool, error)
 	DeleteByUser(groupID int64, userID int64) (bool, error)
@@ -30,24 +30,40 @@ func NewGroupMembershipService() groupMembershipService {
 // GetAll func
 // models.ParamsGetAll int64
 // []models.GroupMembership error
-func (service groupMembershipService) GetAll(params helpers.ParamsGetAll, groupID int64) ([]models.GroupMembership, error) {
+func (service groupMembershipService) GetAll(params helpers.ParamsGetAll, groupID int64, myUserID int64) ([]models.GroupMembership, error) {
 	stmt := fmt.Sprintf(`
+			MATCH (me:User) WHERE ID(me) = {myUserID}
 			MATCH (g:Group)<-[r:JOIN]-(u:User)
 			WHERE ID(g) = {groupID} AND r.role <>4
 			WITH
 				r{id:ID(r), .*,
-			
-					user: u{id:ID(u), .username, .full_name, .avatar}
-					} AS membership
+					user: u{id:ID(u), .username, .full_name, .avatar},
+					can_edit:
+					CASE r.role WHEN 1 THEN CASE WHEN exists((me)-[:JOIN{role:2}]->(g)) THEN true
+																			 WHEN exists((me)-[:JOIN{role:3}]->(g)) THEN true
+																	END
+											WHEN 2 THEN CASE WHEN exists((me)-[:JOIN{role:3}]->(g)) THEN true
+																	END
+											ELSE false
+					END,
+					can_delete:
+					CASE r.role WHEN 1 THEN true
+											WHEN 2 THEN CASE WHEN exists((me)-[:JOIN{role:3}]->(g)) THEN true
+																	END
+											ELSE false
+					END
+
+				} AS membership
 			ORDER BY %s
 			SKIP {skip}
 			LIMIT {limit}
 			RETURN collect(membership) AS memberships
 			`, "membership."+params.Sort)
 	paramsQuery := map[string]interface{}{
-		"groupID": groupID,
-		"skip":    params.Skip,
-		"limit":   params.Limit,
+		"myUserID": myUserID,
+		"groupID":  groupID,
+		"skip":     params.Skip,
+		"limit":    params.Limit,
 	}
 	res := []struct {
 		Memberships []models.GroupMembership `json:"memberships"`
