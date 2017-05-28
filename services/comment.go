@@ -467,7 +467,7 @@ func (service commentService) CheckPostInteractivePermission(postID int64, userI
 		RETURN
 			exists((who)-[:FOLLOW]->(u)) AS followed,
 			s.privacy AS privacy,
-			CASE WHEN exists((who)-[:JOIN{status: 1|2|3}]->(:Group)-[:HAS]->(p)) THEN true AS see_in_group,
+			CASE WHEN exists((who)-[:JOIN]->(:Group)-[:HAS]->(p)) THEN true AS see_in_group,
 			who = u AS owner
 		`
 	params := map[string]interface{}{"userID": userID, "postID": postID}
@@ -487,7 +487,7 @@ func (service commentService) CheckPostInteractivePermission(postID int64, userI
 		return false, err
 	}
 	if len(res) > 0 {
-		if res[0].Privacy == configs.Public || (res[0].Followed && res[0].Privacy == configs.ShareToFollowers || res[0].Owner) {
+		if res[0].Privacy == configs.Public || (res[0].Followed && res[0].Privacy == configs.ShareToFollowers || res[0].Owner) || res[0].SeeInGroup {
 			return true, nil
 		}
 	}
