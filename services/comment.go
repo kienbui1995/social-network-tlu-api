@@ -462,12 +462,12 @@ func (service commentService) CheckPostInteractivePermission(postID int64, userI
 	stmt := `
 		MATCH (who:User)
 		WHERE ID(who) = {userID}
-		MATCH (u:User)-[r:POST]->(s:Post)
-		WHERE ID(s) = {postID}
+		MATCH (u:User)-[r:POST]->(p:Post)
+		WHERE ID(p) = {postID}
 		RETURN
 			exists((who)-[:FOLLOW]->(u)) AS followed,
-			s.privacy AS privacy,
-			CASE WHEN exists((who)-[:JOIN]->(:Group)-[:HAS]->(p)) THEN true AS see_in_group,
+			p.privacy AS privacy,
+			CASE WHEN exists((who)-[:JOIN]->(:Group)-[:HAS]->(p)) THEN true END AS see_in_group,
 			who = u AS owner
 		`
 	params := map[string]interface{}{"userID": userID, "postID": postID}
