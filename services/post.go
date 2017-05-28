@@ -43,6 +43,9 @@ type PostServiceInterface interface {
 	GetLikedUsers(postID int64, params helpers.ParamsGetAll, myUserID int64) ([]models.UserFollowObject, error)
 	GetCommentedUsers(postID int64, params helpers.ParamsGetAll, myUserID int64) ([]models.UserFollowObject, error)
 	GetFollowedUsers(postID int64, params helpers.ParamsGetAll, myUserID int64) ([]models.UserFollowObject, error)
+
+	// work with group
+	CreateGroupPost(post models.Post, groupID int64, userID int64) (int64, error)
 }
 
 // postService struct
@@ -679,21 +682,61 @@ func (service postService) DecreaseLikes(postID int64) (bool, error) {
 // CheckPostInteractivePermission func to check interactive permisson for user with a post
 // int64 int64
 // bool error
+// func (service postService) CheckPostInteractivePermission(postID int64, userID int64) (bool, error) {
+// 	stmt := `
+// 		MATCH (who:User) WHERE ID(who) = {userid}
+// 		MATCH (u:User)-[r:POST]->(s:Post)
+// 		WHERE ID(s) = {postid}
+// 		RETURN exists((who)-[:FOLLOW]->(u)) AS followed, s.privacy AS privacy, who = u AS owner
+// 		`
+// 	params := map[string]interface{}{
+// 		"userid": userID,
+// 		"postid": postID,
+// 	}
+// 	res := []struct {
+// 		Followed bool `json:"followed"`
+// 		Privacy  int  `json:"privacy"`
+// 		Owner    bool `json:"owner"`
+// 	}{}
+// 	cq := neoism.CypherQuery{
+// 		Statement:  stmt,
+// 		Parameters: params,
+// 		Result:     &res,
+// 	}
+// 	err := conn.Cypher(&cq)
+// 	if err != nil {
+// 		return false, err
+// 	}
+// 	if len(res) > 0 {
+// 		if res[0].Privacy == configs.Public || (res[0].Followed && res[0].Privacy == configs.ShareToFollowers || res[0].Owner) {
+// 			return true, nil
+// 		}
+// 	}
+// 	return false, nil
+//
+// }
+
+// CheckPostInteractivePermission func to check interactive permisson for user with a post
+// int64 int64
+// bool error
 func (service postService) CheckPostInteractivePermission(postID int64, userID int64) (bool, error) {
 	stmt := `
-		MATCH (who:User) WHERE ID(who) = {userid}
+		MATCH (who:User)
+		WHERE ID(who) = {userID}
 		MATCH (u:User)-[r:POST]->(s:Post)
-		WHERE ID(s) = {postid}
-		RETURN exists((who)-[:FOLLOW]->(u)) AS followed, s.privacy AS privacy, who = u AS owner
+		WHERE ID(s) = {postID}
+		RETURN
+			exists((who)-[:FOLLOW]->(u)) AS followed,
+			s.privacy AS privacy,
+			CASE WHEN exists((who)-[:JOIN{status: 1|2|3}]->(:Group)-[:HAS]->(p)) THEN true AS see_in_group,
+			who = u AS owner
 		`
-	params := map[string]interface{}{
-		"userid": userID,
-		"postid": postID,
-	}
+	params := map[string]interface{}{"userID": userID, "postID": postID}
 	res := []struct {
-		Followed bool `json:"followed"`
-		Privacy  int  `json:"privacy"`
-		Owner    bool `json:"owner"`
+		Followed   bool `json:"followed"`
+		Privacy    int  `json:"privacy"`
+		Owner      bool `json:"owner"`
+		SeeInGroup bool `json:"see_in_group,omitempty"`
 	}{}
 	cq := neoism.CypherQuery{
 		Statement:  stmt,
@@ -705,12 +748,14 @@ func (service postService) CheckPostInteractivePermission(postID int64, userID i
 		return false, err
 	}
 	if len(res) > 0 {
+		if res[0].SeeInGroup {
+			return true, nil
+		}
 		if res[0].Privacy == configs.Public || (res[0].Followed && res[0].Privacy == configs.ShareToFollowers || res[0].Owner) {
 			return true, nil
 		}
 	}
 	return false, nil
-
 }
 
 // CreateFollow func
@@ -920,4 +965,68 @@ func (service postService) GetCommentedUsers(postID int64, params helpers.Params
 // []models.UserFollowObject error
 func (service postService) GetFollowedUsers(postID int64, params helpers.ParamsGetAll, myUserID int64) ([]models.UserFollowObject, error) {
 	return nil, nil
+}
+
+// CreateGroupPost func to create a new post in a group
+// models.Post int64
+// int64 error
+func (service postService) CreateGroupPost(post models.Post, groupID int64, userID int64) (int64, error) {
+
+	var p interface{}
+	var stmt string
+	if len(post.Photo) == 0 {
+		p = neoism.Props{
+			"message":  post.Message,
+			"privacy":  post.Privacy,
+			"status":   post.Status,
+			"likes":    0,
+			"comments": 0,
+			"shares":   0,
+		}
+		stmt = `
+		    MATCH(u:User) WHERE ID(u) = {userID}
+				MATCH(g:Group) WHERE ID(g) = {groupID}
+		  	CREATE (g)-[h:HAS]->(s:Status:Post { props } )<-[r:POST]-(u)
+				SET s.created_at = TIMESTAMP()
+				RETURN ID(s) as id
+		  	`
+	} else {
+		p = neoism.Props{
+			"message":  post.Message,
+			"photo":    post.Photo,
+			"privacy":  post.Privacy,
+			"status":   post.Status,
+			"likes":    0,
+			"comments": 0,
+			"shares":   0,
+		}
+		stmt = `
+				MATCH(u:User) WHERE ID(u) = {userID}
+ 	 			MATCH(g:Group) WHERE ID(g) = {groupID}
+		  	CREATE (g)-[h:HAS]->(s:Photo:Post { props } )<-[r:POST]-(u)
+				SET s.created_at = TIMESTAMP()
+				RETURN ID(s) as id
+		  	`
+	}
+	params := map[string]interface{}{
+		"props":   p,
+		"userID":  userID,
+		"groupID": groupID,
+	}
+	res := []struct {
+		ID int64 `json:"id"`
+	}{}
+	cq := neoism.CypherQuery{
+		Statement:  stmt,
+		Parameters: params,
+		Result:     &res,
+	}
+	err := conn.Cypher(&cq)
+	if err != nil {
+		return -1, err
+	}
+	if len(res) > 0 {
+		return res[0].ID, nil
+	}
+	return -1, nil
 }

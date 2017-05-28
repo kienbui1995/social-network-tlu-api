@@ -467,13 +467,15 @@ func (service commentService) CheckPostInteractivePermission(postID int64, userI
 		RETURN
 			exists((who)-[:FOLLOW]->(u)) AS followed,
 			s.privacy AS privacy,
+			CASE WHEN exists((who)-[:JOIN{status: 1|2|3}]->(:Group)-[:HAS]->(p)) THEN true AS see_in_group,
 			who = u AS owner
 		`
 	params := map[string]interface{}{"userID": userID, "postID": postID}
 	res := []struct {
-		Followed bool `json:"followed"`
-		Privacy  int  `json:"privacy"`
-		Owner    bool `json:"owner"`
+		Followed   bool `json:"followed"`
+		Privacy    int  `json:"privacy"`
+		Owner      bool `json:"owner"`
+		SeeInGroup bool `json:"see_in_group,omitempty"`
 	}{}
 	cq := neoism.CypherQuery{
 		Statement:  stmt,

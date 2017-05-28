@@ -630,3 +630,104 @@ func (controller PostController) GetUsers(c *gin.Context) {
 	}
 
 }
+
+// CreateGroupPost func
+func (controller PostController) CreateGroupPost(c *gin.Context) {
+	groupID, errParseInt := strconv.ParseInt(c.Param("id"), 10, 64)
+	if errParseInt != nil {
+		helpers.ResponseBadRequestJSON(c, configs.EcParamUserID, "Invalid user id")
+		return
+	}
+
+	// Check permisson
+	myUserID, errGetUserIDFromToken := GetUserIDFromToken(c.Request.Header.Get("token"))
+	if errGetUserIDFromToken != nil {
+		helpers.ResponseAuthJSON(c, 200, "Permissions error")
+		return
+	}
+	group, errGet := services.NewGroupService().Get(groupID, myUserID)
+	if errGet != nil {
+		helpers.ResponseServerErrorJSON(c)
+		fmt.Printf("Get Group service: %s\n", errGet.Error())
+		return
+	}
+	if group.IsEmpty() {
+		helpers.ResponseNotFoundJSON(c, configs.EcNoExistObject, "No exist group")
+		return
+	}
+
+	role, errCheckUserRole := services.NewGroupService().CheckUserRole(groupID, myUserID)
+	if errCheckUserRole != nil {
+		helpers.ResponseServerErrorJSON(c)
+		fmt.Printf("CheckUserRole service: %s\n", errCheckUserRole.Error())
+		return
+	}
+
+	if role != configs.IAdmin && role != configs.IMember {
+		helpers.ResponseForbiddenJSON(c, 200, "Permissions error")
+		return
+	}
+	// json struct
+	json := struct {
+		Photo   string `json:"photo"`
+		Message string `json:"message"`
+		Privacy int    `json:"privacy"`
+		Status  int    `json:"status"`
+	}{}
+
+	// BadRequest (400)
+	if errBindJSON := c.BindJSON(&json); errBindJSON != nil {
+		helpers.ResponseBadRequestJSON(c, configs.EcParam, "BindJSON: "+errBindJSON.Error())
+		return
+	}
+
+	// validation
+	if len(json.Message) == 0 {
+		helpers.ResponseJSON(c, 400, 100, "Missing a few fields:  Message is NULL", nil)
+		return
+	}
+	if json.Status == 0 {
+		json.Status = 1
+	}
+	if json.Privacy == 0 {
+		json.Privacy = 1
+	}
+	// ~doing ~needfix
+	action := " viết bài"
+	if len(json.Photo) > 0 {
+		action = " đăng ảnh"
+	}
+	action += " trong " + group.Name
+	post := models.Post{}
+
+	helpers.Replace(json, &post)
+	postID, errCreate := controller.Service.CreateGroupPost(post, groupID, myUserID)
+	if errCreate == nil && postID >= 0 {
+		helpers.ResponseSuccessJSON(c, 1, "Create user post successful", map[string]interface{}{"id": postID})
+
+		// push noti
+		go func() {
+			user, _ := services.NewUserService().Get(myUserID)
+			notify := models.Notification{
+				ObjectID:   postID,
+				ObjectType: "post",
+				Title:      "@" + user.Username + action,
+				Message:    json.Message,
+			}
+			ids, errGetIDs := services.NewSubscriberService().GetFollowerIDs(myUserID)
+			if len(ids) > 0 && errGetIDs == nil {
+				for index := 0; index < len(ids); index++ {
+					notify.UserID = ids[index]
+					PushTest(notify)
+				}
+			}
+		}()
+		return
+	}
+	helpers.ResponseServerErrorJSON(c)
+	if errCreate != nil {
+		fmt.Printf("Create services: %s\n", errCreate.Error())
+	} else {
+		fmt.Printf("Create services: Don't create group post")
+	}
+}

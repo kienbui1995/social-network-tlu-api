@@ -39,7 +39,7 @@ func AddRoutesPosts(r *gin.RouterGroup) {
 	// post in group
 	routesGroup := r.Group("/groups")
 	{
-		routesGroup.POST("/:id/posts", controller.Create)
+		routesGroup.POST("/:id/posts", controller.CreateGroupPost)
 		routesGroup.GET("/:id/posts", controller.GetAll)
 	}
 }

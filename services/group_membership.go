@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/jmcvetta/neoism"
+	"github.com/kienbui1995/social-network-tlu-api/configs"
 	"github.com/kienbui1995/social-network-tlu-api/helpers"
 	"github.com/kienbui1995/social-network-tlu-api/models"
 )
@@ -31,40 +32,90 @@ func NewGroupMembershipService() groupMembershipService {
 // models.ParamsGetAll int64
 // []models.GroupMembership error
 func (service groupMembershipService) GetAll(params helpers.ParamsGetAll, groupID int64, myUserID int64) ([]models.GroupMembership, error) {
-	stmt := fmt.Sprintf(`
-			MATCH (me:User) WHERE ID(me) = {myUserID}
-			MATCH (g:Group)<-[r:JOIN]-(u:User)
-			WHERE ID(g) = {groupID} AND r.role <>4
-			WITH
-				r{id:ID(r), .*,
-					user: u{id:ID(u), .username, .full_name, .avatar},
-					can_edit:
-					CASE r.role WHEN 1 THEN CASE WHEN exists((me)-[:JOIN{role:2}]->(g)) THEN true
-																			 WHEN exists((me)-[:JOIN{role:3}]->(g)) THEN true
-																	END
-											WHEN 2 THEN CASE WHEN exists((me)-[:JOIN{role:3}]->(g)) THEN true
-																	END
-											ELSE false
-					END,
-					can_delete:
-					CASE r.role WHEN 1 THEN true
-											WHEN 2 THEN CASE WHEN exists((me)-[:JOIN{role:3}]->(g)) THEN true
-																	END
-											ELSE false
-					END
 
-				} AS membership
-			ORDER BY %s
-			SKIP {skip}
-			LIMIT {limit}
-			RETURN collect(membership) AS memberships
-			`, "membership."+params.Sort)
-	paramsQuery := map[string]interface{}{
-		"myUserID": myUserID,
-		"groupID":  groupID,
-		"skip":     params.Skip,
-		"limit":    params.Limit,
+	var stmt string
+	var paramsQuery neoism.Props
+	if len(params.Properties["role"].(string)) > 0 {
+		stmt = fmt.Sprintf(`
+				MATCH (me:User) WHERE ID(me) = {myUserID}
+				MATCH (g:Group)<-[r:JOIN{role: {role} }]-(u:User)
+				WHERE ID(g) = {groupID}
+				WITH
+					r{id:ID(r), .*,
+						user: u{id:ID(u), .username, .full_name, .avatar},
+						can_edit:
+						CASE r.role WHEN 1 THEN CASE WHEN exists((me)-[:JOIN{role:2}]->(g)) THEN true
+																				 WHEN exists((me)-[:JOIN{role:3}]->(g)) THEN true
+																		END
+												WHEN 2 THEN CASE WHEN exists((me)-[:JOIN{role:3}]->(g)) THEN true
+																		END
+												ELSE false
+						END,
+						can_delete:
+						CASE r.role WHEN 1 THEN true
+												WHEN 2 THEN CASE WHEN exists((me)-[:JOIN{role:3}]->(g)) THEN true
+																		END
+												ELSE false
+						END
+
+					} AS membership
+				ORDER BY %s
+				SKIP {skip}
+				LIMIT {limit}
+				RETURN collect(membership) AS memberships
+				`, "membership."+params.Sort)
+		var role int
+		if params.Properties["role"].(string) == configs.SAdmin {
+			role = 2
+		} else if params.Properties["role"].(string) == configs.SBlocked {
+			role = 4
+		} else {
+			role = 1
+		}
+		paramsQuery = map[string]interface{}{
+			"myUserID": myUserID,
+			"groupID":  groupID,
+			"skip":     params.Skip,
+			"limit":    params.Limit,
+			"role":     role,
+		}
+	} else {
+		stmt = fmt.Sprintf(`
+		MATCH (me:User) WHERE ID(me) = {myUserID}
+		MATCH (g:Group)<-[r:JOIN]-(u:User)
+		WHERE ID(g) = {groupID}
+		WITH
+			r{id:ID(r), .*,
+				user: u{id:ID(u), .username, .full_name, .avatar},
+				can_edit:
+				CASE r.role WHEN 1 THEN CASE WHEN exists((me)-[:JOIN{role:2}]->(g)) THEN true
+																		 WHEN exists((me)-[:JOIN{role:3}]->(g)) THEN true
+																END
+										WHEN 2 THEN CASE WHEN exists((me)-[:JOIN{role:3}]->(g)) THEN true
+																END
+										ELSE false
+				END,
+				can_delete:
+				CASE r.role WHEN 1 THEN true
+										WHEN 2 THEN CASE WHEN exists((me)-[:JOIN{role:3}]->(g)) THEN true
+																END
+										ELSE false
+				END
+
+			} AS membership
+		ORDER BY %s
+		SKIP {skip}
+		LIMIT {limit}
+		RETURN collect(membership) AS memberships
+		`, "membership."+params.Sort)
+		paramsQuery = map[string]interface{}{
+			"myUserID": myUserID,
+			"groupID":  groupID,
+			"skip":     params.Skip,
+			"limit":    params.Limit,
+		}
 	}
+
 	res := []struct {
 		Memberships []models.GroupMembership `json:"memberships"`
 	}{}

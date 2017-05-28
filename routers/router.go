@@ -30,6 +30,7 @@ func InitRoutes() *gin.Engine {
 			AddRoutesGroups(v1)
 			AddRoutesGroupMemberships(v1)
 			AddRoutesGroupMembershipRequests(v1)
+
 		}
 	}
 

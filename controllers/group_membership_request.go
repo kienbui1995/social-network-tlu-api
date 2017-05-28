@@ -50,7 +50,7 @@ func (controller GroupMembershipRequestController) Create(c *gin.Context) {
 		return
 	}
 	if role != configs.ICanRequest {
-		helpers.ResponseForbiddenJSON(c, configs.EcPermissionGroup, "Group not visible")
+		helpers.ResponseForbiddenJSON(c, configs.EcPermission, "Permission error")
 		return
 	}
 
@@ -243,6 +243,58 @@ func (controller GroupMembershipRequestController) Update(c *gin.Context) {
 
 // Delete func
 func (controller GroupMembershipRequestController) Delete(c *gin.Context) {
+	requestID, errParseInt := strconv.ParseInt(c.Param("id"), 10, 64)
+	if errParseInt != nil {
+		helpers.ResponseBadRequestJSON(c, configs.EcParam, "Invalid parameter: group_membership_request_id")
+		return
+	}
+
+	// check exist group/get group_membership_request
+	request, errGet := controller.Service.Get(requestID)
+	if errGet != nil {
+		helpers.ResponseServerErrorJSON(c)
+		fmt.Printf("Get service: %s\n", errGet.Error())
+		return
+	}
+	if request.IsEmpty() {
+		helpers.ResponseNotFoundJSON(c, configs.EcNoExistObject, "Not exist group_membership_request")
+		return
+	}
+
+	//check permisson/role
+	myUserID, errGetUserIDFromToken := GetUserIDFromToken(c.Request.Header.Get("token"))
+	if errGetUserIDFromToken != nil {
+		helpers.ResponseServerErrorJSON(c)
+		fmt.Printf("GetUserIDFromToken controller: %s\n", errGetUserIDFromToken.Error())
+		return
+	}
+	role, errCheckUserRole := services.NewGroupService().CheckUserRole(request.Group.ID, myUserID)
+	if errCheckUserRole != nil {
+		helpers.ResponseServerErrorJSON(c)
+		fmt.Printf("CheckUserRole service: %s\n", errCheckUserRole.Error())
+		return
+	}
+	if role != configs.IAdmin && myUserID != request.User.ID {
+		helpers.ResponseForbiddenJSON(c, configs.EcPermission, "Permissions error")
+		return
+	}
+
+	deleted, errDelete := controller.Service.Delete(requestID)
+	if errDelete != nil {
+		helpers.ResponseServerErrorJSON(c)
+		fmt.Printf("Delete service: %s\n", errDelete.Error())
+		return
+	}
+	if deleted != true {
+		helpers.ResponseServerErrorJSON(c)
+		fmt.Printf("Delete service: don't delete")
+		return
+	}
+	helpers.ResponseNoContentJSON(c)
+}
+
+// DeleteByUser func
+func (controller GroupMembershipRequestController) DeleteByUser(c *gin.Context) {
 	requestID, errParseInt := strconv.ParseInt(c.Param("id"), 10, 64)
 	if errParseInt != nil {
 		helpers.ResponseBadRequestJSON(c, configs.EcParam, "Invalid parameter: group_membership_request_id")

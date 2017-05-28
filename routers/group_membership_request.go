@@ -21,6 +21,7 @@ func AddRoutesGroupMembershipRequests(r *gin.RouterGroup) {
 	{
 		routes2.GET("/:id/requests", controller.GetAll)
 		routes2.POST("/:id/requests", controller.Create)
+		routes2.DELETE("/:id/requests", controller.DeleteByUser)
 	}
 
 }

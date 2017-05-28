@@ -38,3 +38,8 @@ type GroupObject struct {
 type PlaceObject struct {
 	GroupObject
 }
+
+// IsEmpty func
+func (object PlaceObject) IsEmpty() bool {
+	return object == PlaceObject{}
+}
