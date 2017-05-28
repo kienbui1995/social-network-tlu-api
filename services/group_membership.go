@@ -35,7 +35,17 @@ func (service groupMembershipService) GetAll(params helpers.ParamsGetAll, groupI
 
 	var stmt string
 	var paramsQuery neoism.Props
-	if len(params.Properties["role"].(string)) > 0 {
+	var role = 0
+	if params.Properties["role"] != nil {
+		if params.Properties["role"].(string) == configs.SAdmin {
+			role = 2
+		} else if params.Properties["role"].(string) == configs.SBlocked {
+			role = 4
+		} else if params.Properties["role"].(string) == configs.SMember {
+			role = 1
+		}
+	}
+	if role > 0 {
 		stmt = fmt.Sprintf(`
 				MATCH (me:User) WHERE ID(me) = {myUserID}
 				MATCH (g:Group)<-[r:JOIN{role: {role} }]-(u:User)
@@ -64,14 +74,7 @@ func (service groupMembershipService) GetAll(params helpers.ParamsGetAll, groupI
 				LIMIT {limit}
 				RETURN collect(membership) AS memberships
 				`, "membership."+params.Sort)
-		var role int
-		if params.Properties["role"].(string) == configs.SAdmin {
-			role = 2
-		} else if params.Properties["role"].(string) == configs.SBlocked {
-			role = 4
-		} else {
-			role = 1
-		}
+
 		paramsQuery = map[string]interface{}{
 			"myUserID": myUserID,
 			"groupID":  groupID,
@@ -83,7 +86,7 @@ func (service groupMembershipService) GetAll(params helpers.ParamsGetAll, groupI
 		stmt = fmt.Sprintf(`
 		MATCH (me:User) WHERE ID(me) = {myUserID}
 		MATCH (g:Group)<-[r:JOIN]-(u:User)
-		WHERE ID(g) = {groupID}
+		WHERE ID(g) = {groupID} AND r.role <> 4
 		WITH
 			r{id:ID(r), .*,
 				user: u{id:ID(u), .username, .full_name, .avatar},

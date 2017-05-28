@@ -62,8 +62,11 @@ func (controller GroupMembershipController) GetAll(c *gin.Context) {
 	params.Limit, _ = strconv.Atoi(c.DefaultQuery("limit", configs.SLimit))
 	params.Sort = c.DefaultQuery("sort", configs.SSort)
 	params.Sort, _ = helpers.ConvertSort(params.Sort)
-	params.Properties = map[string]interface{}{"role": c.DefaultQuery("role", configs.SMember)}
+	if len(c.Query("role")) > 0 {
+		params.Properties = map[string]interface{}{"role": c.DefaultQuery("role", "")}
+	}
 	memberships, errGetAll := controller.Service.GetAll(params, groupID, myUserID)
+
 	if errGetAll != nil {
 		helpers.ResponseServerErrorJSON(c)
 		fmt.Printf("GetAll service: %s\n", errGetAll.Error())
