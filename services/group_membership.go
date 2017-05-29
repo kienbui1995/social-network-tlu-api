@@ -70,13 +70,14 @@ func (service groupMembershipService) GetAll(params helpers.ParamsGetAll, groupI
 						END,
 						can_delete:
 						CASE r.role WHEN 1 THEN CASE WHEN exists((me)-[:JOIN{role:2}]->(g)) THEN true
-																		CASE WHEN exists((me)-[:JOIN{role:3}]->(g)) THEN true
+																		WHEN exists((me)-[:JOIN{role:3}]->(g)) THEN true
 		 									 							END
 												WHEN 2 THEN CASE WHEN exists((me)-[:JOIN{role:3}]->(g)) THEN true
 																		END
 												WHEN 4 THEN CASE WHEN exists((me)-[:JOIN{role:2}]->(g)) THEN true
-																		CASE WHEN exists((me)-[:JOIN{role:3}]->(g)) THEN true
+																		WHEN exists((me)-[:JOIN{role:3}]->(g)) THEN true
 		 									 							END
+
 												ELSE false
 						END
 
@@ -179,12 +180,12 @@ func (service groupMembershipService) GetAll(params helpers.ParamsGetAll, groupI
 						END,
 						can_delete:
 						CASE r.role WHEN 1 THEN CASE WHEN exists((me)-[:JOIN{role:2}]->(g)) THEN true
-																		CASE WHEN exists((me)-[:JOIN{role:3}]->(g)) THEN true
+																		WHEN exists((me)-[:JOIN{role:3}]->(g)) THEN true
 		 									 							END
 												WHEN 2 THEN CASE WHEN exists((me)-[:JOIN{role:3}]->(g)) THEN true
 																		END
 												WHEN 4 THEN CASE WHEN exists((me)-[:JOIN{role:2}]->(g)) THEN true
-																		CASE WHEN exists((me)-[:JOIN{role:3}]->(g)) THEN true
+																		WHEN exists((me)-[:JOIN{role:3}]->(g)) THEN true
 		 									 							END
 												ELSE false
 						END
@@ -239,8 +240,12 @@ func (service groupMembershipService) Create(groupID int64, userID int64) (int64
 					r += CASE g.privacy WHEN 1 THEN {status: 1, role: 1}
 															WHEN 2 THEN {status: 0}
 							 END,
-					CASE g.privacy WHEN 1 THEN g.members = g.members+1
-												 WHEN 2 THEN g.pendin_request = g.pending_requests+1
+					g.members = CASE g.privacy WHEN 1 THEN g.members = g.members+1
+																		 ELSE g.members
+											END,
+					g.pending_requests = CASE g.privacy WHEN 2 THEN g.pending_requests+1
+					 																		ELSE g.pending_requests
+															 END
 			RETURN ID(r) as id
 			`
 	params := map[string]interface{}{
@@ -307,20 +312,20 @@ func (service groupMembershipService) Update(membership models.GroupMembership) 
 	stmt := `
 	MATCH (u:User)-[r:JOIN]->(g:Group)
 	WHERE ID(r) = {membershipID}
-	SET r+={p}, r.updated_at = TIMESTAMP()
+	SET g.pending_requests = CASE WHEN r.status = 0 AND {status}= 1 THEN  g.pending_requests -1  ELSE g.pending_requests END,
+			g.members = CASE WHEN r.status = 0 AND {status}= 1 THEN  g.pending_requests -1 ELSE g.pending_requests END
+	r.updated_at = TIMESTAMP(), r.role = {role}, r.status = {status}
 	RETURN
 		ID(r) AS id, r.created_at AS created_at, r.updated_at AS updated_at,
  		r.role AS role, r.status AS status,
 		u{id:ID(u), .username, .full_name, .avatar} AS user,
 		g{id:ID(g), .name, .avatar} AS group
 	`
-	p := map[string]interface{}{
-		"status": membership.Status,
-		"role":   membership.Role,
-	}
+
 	params := neoism.Props{
 		"membershipID": membership.ID,
-		"p":            p,
+		"status":       membership.Status,
+		"role":         membership.Role,
 	}
 
 	res := []models.GroupMembership{}

@@ -49,7 +49,7 @@ func (controller GroupMembershipController) GetAll(c *gin.Context) {
 		fmt.Printf("CheckUserRole service: %s\n", errCheckUserRole.Error())
 		return
 	}
-	if role == configs.IBlocked || role == configs.IPending {
+	if role == configs.IBlocked || role == configs.IPending || ((c.Query("role") == "pending" || c.Query("role") == "blocked") && role != configs.IAdmin) {
 		helpers.ResponseForbiddenJSON(c, configs.EcPermissionGroup, "Group members not visible")
 		return
 	}
@@ -315,7 +315,7 @@ func (controller GroupMembershipController) DeleteByUser(c *gin.Context) {
 		fmt.Printf("CheckUserRole service: %s\n", errCheckUserRole.Error())
 		return
 	}
-	if role != configs.IMember && role != configs.IAdmin {
+	if role != configs.IMember && role != configs.IAdmin && role != configs.IPending {
 		helpers.ResponseNotFoundJSON(c, configs.EcNoExistObject, "No exist membership")
 		return
 	}
