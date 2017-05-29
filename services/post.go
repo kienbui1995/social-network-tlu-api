@@ -1048,8 +1048,8 @@ func (service postService) GetAllGroupPosts(params helpers.ParamsGetAll, groupID
 	if params.Type == configs.SPostPhoto {
 		stmt = fmt.Sprintf(`
 		    MATCH(g:Group) WHERE ID(g) = {groupID}
-				MATCH(me:User) WHERE ID(me) = {myuserid}
-		  	MATCH (s:Photo:Post)<-[r:HAS]-(g)
+				MATCH(me:User) WHERE ID(me) = {myUserID}
+		  	MATCH (u:User)-[:POST]->(s:Photo:Post)<-[r:HAS]-(g)
 				RETURN
 					ID(s) AS id,
 					substring(s.message,0,250) AS message, length(s.message)>250 AS summary,
@@ -1060,18 +1060,17 @@ func (service postService) GetAllGroupPosts(params helpers.ParamsGetAll, groupID
 					u{id:ID(u), .username, .full_name, .avatar} AS owner,
 					exists((me)-[:LIKE]->(s)) AS is_liked,
 					exists((me)-[:FOLLOW]->(s)) AS is_following,
-					CASE WHEN {userid} = {myuserid} THEN true ELSE false END AS can_edit,
-					CASE WHEN {userid} = {myuserid} OR exists((me)-[:JOIN{role:2}]->(g)) OR exists((me)-[:JOIN{role:3}]->(g)) THEN true ELSE false END AS can_delete
+					CASE WHEN ID(u) = {myUserID} THEN true ELSE false END AS can_edit,
+					CASE WHEN ID(u) = {myUserID} OR exists((me)-[:JOIN{role:2}]->(g)) OR exists((me)-[:JOIN{role:3}]->(g)) THEN true ELSE false END AS can_delete
 				ORDER BY %s
 				SKIP {skip}
 				LIMIT {limit}
 		  	`, params.Sort)
 	} else if params.Type == configs.SPostStatus {
 		stmt = fmt.Sprintf(`
-		    MATCH(u:User) WHERE ID(u) = {userid}
-				MATCH(me:User) WHERE ID(me) = {myuserid}
-		  	MATCH (s:Status:Post)<-[r:POST]-(u)
-				WHERE s.privacy = 1 OR (s.privacy = 2 AND exists((me)-[:FOLLOW]->(u))) OR {userid} = {myuserid}
+		    MATCH(g:Group) WHERE ID(g) = {groupID}
+				MATCH(me:User) WHERE ID(me) = {myUserID}
+		  	MATCH (u:User)-[:POST]->(s:Status:Post)<-[r:HAS]-(g)
 				RETURN
 					ID(s) AS id,
 					substring(s.message,0,250) AS message, length(s.message)>250 AS summary,
@@ -1081,18 +1080,17 @@ func (service postService) GetAllGroupPosts(params helpers.ParamsGetAll, groupID
 					u{id:ID(u), .username, .full_name, .avatar} AS owner,
 					exists((me)-[:LIKE]->(s)) AS is_liked,
 					exists((me)-[:FOLLOW]->(s)) AS is_following,
-					CASE WHEN {userid} = {myuserid} THEN true ELSE false END AS can_edit,
-					CASE WHEN {userid} = {myuserid} THEN true ELSE false END AS can_delete
+					CASE WHEN ID(u) = {myUserID} THEN true ELSE false END AS can_edit,
+					CASE WHEN ID(u) = {myUserID} OR exists((me)-[:JOIN{role:2}]->(g)) OR exists((me)-[:JOIN{role:3}]->(g)) THEN true ELSE false END AS can_delete
 				ORDER BY %s
 				SKIP {skip}
 				LIMIT {limit}
 		  	`, params.Sort)
 	} else if params.Type == configs.SPost {
 		stmt = fmt.Sprintf(`
-		    MATCH(u:User) WHERE ID(u) = {userid}
-				MATCH(me:User) WHERE ID(me) = {myuserid}
-		  	MATCH (s:Post)<-[r:POST]-(u)
-				WHERE s.privacy = 1 OR (s.privacy = 2 AND exists((me)-[:FOLLOW]->(u))) OR {userid} = {myuserid}
+			MATCH(g:Group) WHERE ID(g) = {groupID}
+			MATCH(me:User) WHERE ID(me) = {myUserID}
+			MATCH (u:User)-[:POST]->(s:Post)<-[r:HAS]-(g)
 				RETURN
 					ID(s) AS id,
 					substring(s.message,0,250) AS message, length(s.message)>250 AS summary,
@@ -1103,8 +1101,8 @@ func (service postService) GetAllGroupPosts(params helpers.ParamsGetAll, groupID
 					u{id:ID(u), .username, .full_name, .avatar} AS owner,
 					exists((me)-[:LIKE]->(s)) AS is_liked,
 					exists((me)-[:FOLLOW]->(s)) AS is_following,
-					CASE WHEN {userid} = {myuserid} THEN true ELSE false END AS can_edit,
-					CASE WHEN {userid} = {myuserid} THEN true ELSE false END AS can_delete
+					CASE WHEN ID(u) = {myUserID} THEN true ELSE false END AS can_edit,
+					CASE WHEN ID(u) = {myUserID} OR exists((me)-[:JOIN{role:2}]->(g)) OR exists((me)-[:JOIN{role:3}]->(g)) THEN true ELSE false END AS can_delete
 				ORDER BY %s
 				SKIP {skip}
 				LIMIT {limit}
@@ -1112,7 +1110,7 @@ func (service postService) GetAllGroupPosts(params helpers.ParamsGetAll, groupID
 	}
 	paramsQuery := map[string]interface{}{
 		"groupID":  groupID,
-		"myuserid": myUserID,
+		"myUserID": myUserID,
 		"skip":     params.Skip,
 		"limit":    params.Limit,
 	}
