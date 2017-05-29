@@ -487,26 +487,15 @@ func (controller PostController) CreateFollow(c *gin.Context) {
 		fmt.Printf("GetUserIDFromToken controller: %s\n", errGetUserIDFromToken.Error())
 		return
 	}
-	// check liked
-	if liked, _ := controller.Service.CheckExistLike(postID, myUserID); liked == true {
-		helpers.ResponseBadRequestJSON(c, configs.EcExisObject, "Exist this object: Likes")
+	// check followed
+	if followed, _ := controller.Service.CheckExistFollow(postID, myUserID); followed == true {
+		helpers.ResponseBadRequestJSON(c, configs.EcExisObject, "Exist this object: Subcriptions")
 		return
 	}
 
-	likes, errCreateLike := controller.Service.CreateLike(postID, myUserID)
-	if errCreateLike == nil && likes >= 0 {
-		helpers.ResponseSuccessJSON(c, 1, "Like post successful", map[string]int{"likes": likes})
-
-		// auto Increase post Likes
-		go func() {
-			ok, errIncreaseLikes := controller.Service.IncreaseLikes(postID)
-			if errIncreaseLikes != nil {
-				fmt.Printf("IncreaseLikes service: %s\n", errIncreaseLikes.Error())
-			}
-			if ok != true {
-				fmt.Printf("IncreaseLikes service: don't increase like")
-			}
-		}()
+	follows, errCreateFollow := controller.Service.CreateFollow(postID, myUserID)
+	if errCreateFollow == nil && follows >= 0 {
+		helpers.ResponseSuccessJSON(c, 1, "Follow post successful", map[string]int64{"id": follows})
 
 		// push noti
 		go func() {
@@ -516,7 +505,7 @@ func (controller PostController) CreateFollow(c *gin.Context) {
 				UserID:     post.Owner.ID,
 				ObjectID:   post.ID,
 				ObjectType: "post",
-				Title:      "@" + userLiked.Username + " thích trạng thái của bạn",
+				Title:      "@" + userLiked.Username + " theo dõi trạng thái của bạn",
 				Message:    post.Message,
 			}
 			PushTest(notify)
@@ -525,15 +514,57 @@ func (controller PostController) CreateFollow(c *gin.Context) {
 	}
 
 	helpers.ResponseServerErrorJSON(c)
-	if errCreateLike != nil {
-		fmt.Printf("CreateLike services: %s\n", errCreateLike.Error())
+	if errCreateFollow != nil {
+		fmt.Printf("CreateFollow services: %s\n", errCreateFollow.Error())
 	} else {
-		fmt.Printf("CreateLike services: Don't Create Like\n")
+		fmt.Printf("CreateFollow services: Don't Create Follow\n")
 	}
 }
 
 // DeleteFollow func
 func (controller PostController) DeleteFollow(c *gin.Context) {
+	postID, errParseInt := strconv.ParseInt(c.Param("id"), 10, 64)
+	if errParseInt != nil {
+		helpers.ResponseBadRequestJSON(c, configs.EcParam, "Invalid post id")
+		return
+	}
+	//check exist
+	exist, errCheckExistPost := controller.Service.CheckExistPost(postID)
+	if errCheckExistPost != nil {
+		helpers.ResponseServerErrorJSON(c)
+		fmt.Printf("CheckExistPost service: %s\n", errCheckExistPost.Error())
+		return
+	}
+	if exist != true {
+		helpers.ResponseBadRequestJSON(c, configs.EcNoExistObject, "No exist this object: post")
+		return
+	}
+
+	//check permisson
+	myUserID, errGetUserIDFromToken := GetUserIDFromToken(c.Request.Header.Get("token"))
+	if errGetUserIDFromToken != nil {
+		helpers.ResponseAuthJSON(c, 200, "Permissions error")
+		return
+	}
+
+	// check followed
+	if followed, _ := controller.Service.CheckExistFollow(postID, myUserID); followed != true {
+		helpers.ResponseBadRequestJSON(c, configs.EcNoExistObject, "No exist this object: Subcriptions")
+		return
+	}
+
+	deleted, errDeleteFollow := controller.Service.DeleteFollow(postID, myUserID)
+	if errDeleteFollow == nil && deleted == true {
+		helpers.ResponseNoContentJSON(c)
+		return
+	}
+
+	helpers.ResponseServerErrorJSON(c)
+	if errDeleteFollow != nil {
+		fmt.Printf("DeleteFollow services: %s\n", errDeleteFollow.Error())
+	} else {
+		fmt.Printf("DeleteFollow services: Don't Delete Follow\n")
+	}
 
 }
 

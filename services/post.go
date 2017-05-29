@@ -77,6 +77,7 @@ func (service postService) GetAll(params helpers.ParamsGetAll, userID int64, myU
 					s.likes AS likes, s.comments AS comments, s.shares AS shares,
 					u{id:ID(u), .username, .full_name, .avatar} AS owner,
 					exists((me)-[:LIKE]->(s)) AS is_liked,
+					exists((me)-[:FOLLOW]->(s)) AS is_following,
 					CASE WHEN {userid} = {myuserid} THEN true ELSE false END AS can_edit,
 					CASE WHEN {userid} = {myuserid} THEN true ELSE false END AS can_delete
 				ORDER BY %s
@@ -97,6 +98,7 @@ func (service postService) GetAll(params helpers.ParamsGetAll, userID int64, myU
 					s.likes AS likes, s.comments AS comments, s.shares AS shares,
 					u{id:ID(u), .username, .full_name, .avatar} AS owner,
 					exists((me)-[:LIKE]->(s)) AS is_liked,
+					exists((me)-[:FOLLOW]->(s)) AS is_following,
 					CASE WHEN {userid} = {myuserid} THEN true ELSE false END AS can_edit,
 					CASE WHEN {userid} = {myuserid} THEN true ELSE false END AS can_delete
 				ORDER BY %s
@@ -118,6 +120,7 @@ func (service postService) GetAll(params helpers.ParamsGetAll, userID int64, myU
 					s.likes AS likes, s.comments AS comments, s.shares AS shares,
 					u{id:ID(u), .username, .full_name, .avatar} AS owner,
 					exists((me)-[:LIKE]->(s)) AS is_liked,
+					exists((me)-[:FOLLOW]->(s)) AS is_following,
 					CASE WHEN {userid} = {myuserid} THEN true ELSE false END AS can_edit,
 					CASE WHEN {userid} = {myuserid} THEN true ELSE false END AS can_delete
 				ORDER BY %s
@@ -163,6 +166,7 @@ func (service postService) Get(postID int64, myUserID int64) (models.Post, error
 				u{id:ID(u), .username, .full_name, .avatar} AS owner,
 				s.likes AS likes, s.comments AS comments, s.shares AS shares,
 				exists((me)-[:LIKE]->(s)) AS is_liked,
+				exists((me)-[:FOLLOW]->(s)) AS is_following,
 				CASE WHEN ID(u) = {myuserid} THEN true ELSE false END AS can_edit,
 				CASE WHEN ID(u) = {myuserid} THEN true ELSE false END AS can_delete
 			`
@@ -286,6 +290,7 @@ func (service postService) Update(post models.Post) (models.Post, error) {
 				case s.privacy when null then 1 else s.privacy end AS privacy, case s.status when null then 1 else s.status end AS status,
 				ID(u) AS userid, u.username AS username, u.full_name AS full_name, u.avatar AS avatar,
 				exists((u)-[:LIKE]->(s)) AS is_liked,
+				exists((u)-[:FOLLOW]->(s)) AS is_following,
 				s.likes AS likes, s.comments AS comments, s.shares AS shares,
 				true AS can_edit,
 				true AS can_delete
@@ -308,6 +313,7 @@ func (service postService) Update(post models.Post) (models.Post, error) {
 			case s.privacy when null then 1 else s.privacy end AS privacy, case s.status when null then 1 else s.status end AS status,
 			ID(u) AS userid, u.username AS username, u.full_name AS full_name, u.avatar AS avatar,
 			exists((u)-[:LIKE]->(s)) AS is_liked,
+			exists((u)-[:FOLLOW]->(s)) AS is_following,
 			s.likes AS likes, s.comments AS comments, s.shares AS shares,
 			true AS can_edit,
 			true AS can_delete
@@ -480,6 +486,8 @@ func (service postService) CreateLike(postID int64, userID int64) (int, error) {
 		MATCH(s:Post) WHERE ID(s) = {postid}
 		MERGE(u)-[l:LIKE]->(s)
 		ON CREATE SET l.created_at = TIMESTAMP()
+		MERGE(u)-[f:FOLLOW]->(s)
+		ON CREATE SET f.created_at = TIMESTAMP()
 		RETURN exists((u)-[l]->(s)) AS liked, s.likes AS likes
 		`
 	params := map[string]interface{}{
@@ -729,7 +737,7 @@ func (service postService) CheckPostInteractivePermission(postID int64, userID i
 		RETURN
 			exists((who)-[:FOLLOW]->(u)) AS followed,
 			s.privacy AS privacy,
-			CASE WHEN exists((who)-[:JOIN{status: 1|2|3}]->(:Group)-[:HAS]->(p)) THEN true AS see_in_group,
+			CASE WHEN exists((who)-[:JOIN]->(:Group)-[:HAS]->(p)) THEN true AS see_in_group,
 			who = u AS owner
 		`
 	params := map[string]interface{}{"userID": userID, "postID": postID}
@@ -752,7 +760,7 @@ func (service postService) CheckPostInteractivePermission(postID int64, userID i
 		if res[0].SeeInGroup {
 			return true, nil
 		}
-		if res[0].Privacy == configs.Public || (res[0].Followed && res[0].Privacy == configs.ShareToFollowers || res[0].Owner) {
+		if res[0].Privacy == configs.Public || (res[0].Followed && res[0].Privacy == configs.ShareToFollowers || res[0].Owner) || res[0].SeeInGroup {
 			return true, nil
 		}
 	}
@@ -902,7 +910,7 @@ func (service postService) GetCanMentionedUsers(postID int64, params helpers.Par
  	UNWIND users AS x
  	WITH DISTINCT x, me
  	MATCH (mention:User)
- 	WHERE ID(mention) = x
+ 	WHERE CASE exists((p)<-[:HAS]-(g:Group)) WHEN true THEN exists((mention)-[:JOIN]->(g)) ELSE ID(mention) = x END
  	WITH
  		mention{id:ID(mention),.username, .avatar, .full_name, is_followed: exists((me)-[:FOLLOW]->(mention)) } AS user,
     mention.created_at AS created_at, mention.username AS username, mention.full_name AS full_name, ID(mention) AS id
@@ -988,7 +996,7 @@ func (service postService) CreateGroupPost(post models.Post, groupID int64, user
 		    MATCH(u:User) WHERE ID(u) = {userID}
 				MATCH(g:Group) WHERE ID(g) = {groupID}
 		  	CREATE (g)-[h:HAS]->(s:Status:Post { props } )<-[r:POST]-(u)
-				SET s.created_at = TIMESTAMP()
+				SET s.created_at = TIMESTAMP(), g.posts= g.posts+1
 				RETURN ID(s) as id
 		  	`
 	} else {
@@ -1005,7 +1013,7 @@ func (service postService) CreateGroupPost(post models.Post, groupID int64, user
 				MATCH(u:User) WHERE ID(u) = {userID}
  	 			MATCH(g:Group) WHERE ID(g) = {groupID}
 		  	CREATE (g)-[h:HAS]->(s:Photo:Post { props } )<-[r:POST]-(u)
-				SET s.created_at = TIMESTAMP()
+				SET s.created_at = TIMESTAMP(), g.posts= g.posts+1
 				RETURN ID(s) as id
 		  	`
 	}
@@ -1042,7 +1050,6 @@ func (service postService) GetAllGroupPosts(params helpers.ParamsGetAll, groupID
 		    MATCH(g:Group) WHERE ID(g) = {groupID}
 				MATCH(me:User) WHERE ID(me) = {myuserid}
 		  	MATCH (s:Photo:Post)<-[r:HAS]-(g)
-				WHERE s.privacy = 1 OR (s.privacy = 2 AND exists((me)-[:FOLLOW]->(u))) OR {userid} = {myuserid}
 				RETURN
 					ID(s) AS id,
 					substring(s.message,0,250) AS message, length(s.message)>250 AS summary,
@@ -1052,8 +1059,9 @@ func (service postService) GetAllGroupPosts(params helpers.ParamsGetAll, groupID
 					s.likes AS likes, s.comments AS comments, s.shares AS shares,
 					u{id:ID(u), .username, .full_name, .avatar} AS owner,
 					exists((me)-[:LIKE]->(s)) AS is_liked,
+					exists((me)-[:FOLLOW]->(s)) AS is_following,
 					CASE WHEN {userid} = {myuserid} THEN true ELSE false END AS can_edit,
-					CASE WHEN {userid} = {myuserid} THEN true ELSE false END AS can_delete
+					CASE WHEN {userid} = {myuserid} OR exists((me)-[:JOIN{role:2}]->(g)) OR exists((me)-[:JOIN{role:3}]->(g)) THEN true ELSE false END AS can_delete
 				ORDER BY %s
 				SKIP {skip}
 				LIMIT {limit}
@@ -1072,6 +1080,7 @@ func (service postService) GetAllGroupPosts(params helpers.ParamsGetAll, groupID
 					s.likes AS likes, s.comments AS comments, s.shares AS shares,
 					u{id:ID(u), .username, .full_name, .avatar} AS owner,
 					exists((me)-[:LIKE]->(s)) AS is_liked,
+					exists((me)-[:FOLLOW]->(s)) AS is_following,
 					CASE WHEN {userid} = {myuserid} THEN true ELSE false END AS can_edit,
 					CASE WHEN {userid} = {myuserid} THEN true ELSE false END AS can_delete
 				ORDER BY %s
@@ -1093,6 +1102,7 @@ func (service postService) GetAllGroupPosts(params helpers.ParamsGetAll, groupID
 					s.likes AS likes, s.comments AS comments, s.shares AS shares,
 					u{id:ID(u), .username, .full_name, .avatar} AS owner,
 					exists((me)-[:LIKE]->(s)) AS is_liked,
+					exists((me)-[:FOLLOW]->(s)) AS is_following,
 					CASE WHEN {userid} = {myuserid} THEN true ELSE false END AS can_edit,
 					CASE WHEN {userid} = {myuserid} THEN true ELSE false END AS can_delete
 				ORDER BY %s
