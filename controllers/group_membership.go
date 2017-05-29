@@ -49,7 +49,7 @@ func (controller GroupMembershipController) GetAll(c *gin.Context) {
 		fmt.Printf("CheckUserRole service: %s\n", errCheckUserRole.Error())
 		return
 	}
-	if role == configs.IBlocked || role == configs.IDeclined || role == configs.IPending {
+	if role == configs.IBlocked || role == configs.IPending {
 		helpers.ResponseForbiddenJSON(c, configs.EcPermissionGroup, "Group members not visible")
 		return
 	}
@@ -134,7 +134,7 @@ func (controller GroupMembershipController) Create(c *gin.Context) {
 		return
 	}
 
-	//check permisson/ role
+	//check permisson/role
 	myUserID, errGetUserIDFromToken := GetUserIDFromToken(c.Request.Header.Get("token"))
 	if errGetUserIDFromToken != nil {
 		helpers.ResponseServerErrorJSON(c)
@@ -147,22 +147,18 @@ func (controller GroupMembershipController) Create(c *gin.Context) {
 		fmt.Printf("CheckUserRole service: %s\n", errCheckUserRole.Error())
 		return
 	}
-	if role == configs.IBlocked || role == configs.IDeclined || role == configs.IPending {
+	if role == configs.IBlocked {
 		helpers.ResponseForbiddenJSON(c, configs.EcPermissionGroup, "Group not visible")
 		return
 	}
 
-	if role == configs.IAdmin {
-		helpers.ResponseBadRequestJSON(c, configs.EcExisObject, "Exist membership")
-		return
-	}
-	if role == configs.IMember {
+	if role == configs.IMember || role == configs.IAdmin || role == configs.IPending {
 		helpers.ResponseBadRequestJSON(c, configs.EcExisObject, "Exist membership")
 		return
 	}
 
-	if role != configs.ICanJoin {
-		helpers.ResponseForbiddenJSON(c, configs.EcExisObject, "Can't create this membership")
+	if role != configs.ICanJoin && role != configs.ICanRequest {
+		helpers.ResponseForbiddenJSON(c, configs.EcPermissionGroup, "Can't create this membership")
 		return
 	}
 	membershipID, errCreate := controller.Service.Create(groupID, myUserID)
@@ -253,7 +249,7 @@ func (controller GroupMembershipController) Delete(c *gin.Context) {
 		return
 	}
 
-	//check permisson/ role
+	//check permisson/role
 	myUserID, errGetUserIDFromToken := GetUserIDFromToken(c.Request.Header.Get("token"))
 	if errGetUserIDFromToken != nil {
 		helpers.ResponseServerErrorJSON(c)
@@ -319,7 +315,7 @@ func (controller GroupMembershipController) DeleteByUser(c *gin.Context) {
 		fmt.Printf("CheckUserRole service: %s\n", errCheckUserRole.Error())
 		return
 	}
-	if role != configs.IMember {
+	if role != configs.IMember && role != configs.IAdmin {
 		helpers.ResponseNotFoundJSON(c, configs.EcNoExistObject, "No exist membership")
 		return
 	}

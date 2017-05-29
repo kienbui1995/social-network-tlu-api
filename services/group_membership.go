@@ -35,17 +35,21 @@ func (service groupMembershipService) GetAll(params helpers.ParamsGetAll, groupI
 
 	var stmt string
 	var paramsQuery neoism.Props
-	var role = 0
+	var role = -1
 	if params.Properties["role"] != nil {
 		if params.Properties["role"].(string) == configs.SAdmin {
 			role = 2
 		} else if params.Properties["role"].(string) == configs.SBlocked {
 			role = 4
+		} else if params.Properties["role"].(string) == configs.SCreator {
+			role = 3
 		} else if params.Properties["role"].(string) == configs.SMember {
 			role = 1
+		} else if params.Properties["role"].(string) == configs.SPending {
+			role = 0
 		}
 	}
-	if role > 0 {
+	if role >= 1 && role <= 3 { // member/admin/creator
 		stmt = fmt.Sprintf(`
 				MATCH (me:User) WHERE ID(me) = {myUserID}
 				MATCH (g:Group)<-[r:JOIN{role: {role} }]-(u:User)
@@ -59,12 +63,20 @@ func (service groupMembershipService) GetAll(params helpers.ParamsGetAll, groupI
 																		END
 												WHEN 2 THEN CASE WHEN exists((me)-[:JOIN{role:3}]->(g)) THEN true
 																		END
+												WHEN 4 THEN CASE WHEN exists((me)-[:JOIN{role:2}]->(g)) THEN true
+																				 WHEN exists((me)-[:JOIN{role:3}]->(g)) THEN true
+																		END
 												ELSE false
 						END,
 						can_delete:
-						CASE r.role WHEN 1 THEN true
+						CASE r.role WHEN 1 THEN CASE WHEN exists((me)-[:JOIN{role:2}]->(g)) THEN true
+																		CASE WHEN exists((me)-[:JOIN{role:3}]->(g)) THEN true
+		 									 							END
 												WHEN 2 THEN CASE WHEN exists((me)-[:JOIN{role:3}]->(g)) THEN true
 																		END
+												WHEN 4 THEN CASE WHEN exists((me)-[:JOIN{role:2}]->(g)) THEN true
+																		CASE WHEN exists((me)-[:JOIN{role:3}]->(g)) THEN true
+		 									 							END
 												ELSE false
 						END
 
@@ -82,27 +94,24 @@ func (service groupMembershipService) GetAll(params helpers.ParamsGetAll, groupI
 			"limit":    params.Limit,
 			"role":     role,
 		}
-	} else {
+	} else if role == 4 { // blocked
 		stmt = fmt.Sprintf(`
 		MATCH (me:User) WHERE ID(me) = {myUserID}
-		MATCH (g:Group)<-[r:JOIN]-(u:User)
-		WHERE ID(g) = {groupID} AND r.role <> 4
+		MATCH (g:Group)<-[r:JOIN{role:4}]-(u:User)
+		WHERE ID(g) = {groupID} AND r.status = 1
 		WITH
 			r{id:ID(r), .*,
 				user: u{id:ID(u), .username, .full_name, .avatar},
 				can_edit:
-				CASE r.role WHEN 1 THEN CASE WHEN exists((me)-[:JOIN{role:2}]->(g)) THEN true
-																		 WHEN exists((me)-[:JOIN{role:3}]->(g)) THEN true
-																END
-										WHEN 2 THEN CASE WHEN exists((me)-[:JOIN{role:3}]->(g)) THEN true
-																END
-										ELSE false
+				CASE WHEN exists((me)-[:JOIN{role:2}]->(g)) THEN true
+						 WHEN exists((me)-[:JOIN{role:3}]->(g)) THEN true
+						 ELSE false
 				END,
 				can_delete:
-				CASE r.role WHEN 1 THEN true
-										WHEN 2 THEN CASE WHEN exists((me)-[:JOIN{role:3}]->(g)) THEN true
-																END
-										ELSE false
+				CASE WHEN exists((me)-[:JOIN{role:2}]->(g)) THEN true
+						 WHEN exists((me)-[:JOIN{role:3}]->(g)) THEN true
+						 WHEN ID(me) = ID(u) THEN true
+						 ELSE false
 				END
 
 			} AS membership
@@ -117,8 +126,84 @@ func (service groupMembershipService) GetAll(params helpers.ParamsGetAll, groupI
 			"skip":     params.Skip,
 			"limit":    params.Limit,
 		}
-	}
+	} else if role == 0 { // pending request
+		stmt = fmt.Sprintf(`
+		MATCH (me:User) WHERE ID(me) = {myUserID}
+		MATCH (g:Group)<-[r:JOIN{status: 0}]-(u:User)
+		WHERE ID(g) = {groupID}
+		WITH
+			r{id:ID(r), .*,
+				user: u{id:ID(u), .username, .full_name, .avatar},
+				can_edit:
+				CASE WHEN exists((me)-[:JOIN{role:2}]->(g)) THEN true
+						 WHEN exists((me)-[:JOIN{role:3}]->(g)) THEN true
+						 ELSE false
+				END,
+				can_delete:
+				CASE WHEN exists((me)-[:JOIN{role:2}]->(g)) THEN true
+						 WHEN exists((me)-[:JOIN{role:3}]->(g)) THEN true
+						 WHEN ID(me) = ID(u) THEN true
+						 ELSE false
+				END
 
+			} AS membership
+		ORDER BY %s
+		SKIP {skip}
+		LIMIT {limit}
+		RETURN collect(membership) AS memberships
+		`, "membership."+params.Sort)
+		paramsQuery = map[string]interface{}{
+			"myUserID": myUserID,
+			"groupID":  groupID,
+			"skip":     params.Skip,
+			"limit":    params.Limit,
+		}
+	} else { // all member (include admin/creator)
+		stmt = fmt.Sprintf(`
+				MATCH (me:User) WHERE ID(me) = {myUserID}
+				MATCH (g:Group)<-[r:JOIN]-(u:User)
+				WHERE ID(g) = {groupID} AND r.role <>4 AND r.status = 1
+				WITH
+					r{id:ID(r), .*,
+						user: u{id:ID(u), .username, .full_name, .avatar},
+						can_edit:
+						CASE r.role WHEN 1 THEN CASE WHEN exists((me)-[:JOIN{role:2}]->(g)) THEN true
+																				 WHEN exists((me)-[:JOIN{role:3}]->(g)) THEN true
+																		END
+												WHEN 2 THEN CASE WHEN exists((me)-[:JOIN{role:3}]->(g)) THEN true
+																		END
+												WHEN 4 THEN CASE WHEN exists((me)-[:JOIN{role:2}]->(g)) THEN true
+																				 WHEN exists((me)-[:JOIN{role:3}]->(g)) THEN true
+																		END
+												ELSE false
+						END,
+						can_delete:
+						CASE r.role WHEN 1 THEN CASE WHEN exists((me)-[:JOIN{role:2}]->(g)) THEN true
+																		CASE WHEN exists((me)-[:JOIN{role:3}]->(g)) THEN true
+		 									 							END
+												WHEN 2 THEN CASE WHEN exists((me)-[:JOIN{role:3}]->(g)) THEN true
+																		END
+												WHEN 4 THEN CASE WHEN exists((me)-[:JOIN{role:2}]->(g)) THEN true
+																		CASE WHEN exists((me)-[:JOIN{role:3}]->(g)) THEN true
+		 									 							END
+												ELSE false
+						END
+
+					} AS membership
+				ORDER BY %s
+				SKIP {skip}
+				LIMIT {limit}
+				RETURN collect(membership) AS memberships
+				`, "membership."+params.Sort)
+
+		paramsQuery = map[string]interface{}{
+			"myUserID": myUserID,
+			"groupID":  groupID,
+			"skip":     params.Skip,
+			"limit":    params.Limit,
+			"role":     role,
+		}
+	}
 	res := []struct {
 		Memberships []models.GroupMembership `json:"memberships"`
 	}{}
@@ -150,7 +235,12 @@ func (service groupMembershipService) Create(groupID int64, userID int64) (int64
 			MATCH(u:User) WHERE ID(u) = {userID}
 			MATCH(g:Group) WHERE ID(g) = {groupID}
 			CREATE (g)<-[r:JOIN]-(u)
-			SET r.role=1, r.created_at = TIMESTAMP(), r.status = 1, g.members=g.members+1
+			SET r.created_at = TIMESTAMP(),
+					r += CASE g.privacy WHEN 1 THEN {status: 1, role: 1}
+															WHEN 2 THEN {status: 0}
+							 END,
+					CASE g.privacy WHEN 1 THEN g.members = g.members+1
+												 WHEN 2 THEN g.pendin_request = g.pending_requests+1
 			RETURN ID(r) as id
 			`
 	params := map[string]interface{}{
@@ -259,7 +349,12 @@ func (service groupMembershipService) Delete(membershipID int64) (bool, error) {
 	stmt := `
 			MATCH (g:Group)<-[r:JOIN]-(u:User)
 			WHERE ID(r) = {membershipID}
-			SET g.members = g.members - 1
+			SET g.members = CASE r.status WHEN 1 THEN g.members - 1
+																		WHEN 0 THEN g.members
+											END,
+					g.pending_requests = CASE r.status WHEN 0 THEN g.pending_requests - 1
+																		         WHEN 1 THEN g.pending_requests
+											END
 			DELETE r
 			`
 	params := map[string]interface{}{
@@ -281,7 +376,12 @@ func (service groupMembershipService) DeleteByUser(groupID int64, userID int64) 
 	stmt := `
 			MATCH (g:Group)<-[r:JOIN]-(u:User)
 			WHERE ID(g) = {groupID} AND ID(u) = {userID}
-			SET g.members = g.members - 1
+			SET g.members = CASE r.status WHEN 1 THEN g.members - 1
+																		WHEN 0 THEN g.members
+											END,
+					g.pending_requests = CASE r.status WHEN 0 THEN g.pending_requests - 1
+																		         WHEN 1 THEN g.pending_requests
+											END
 			DELETE r
 			`
 	params := map[string]interface{}{

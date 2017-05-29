@@ -283,7 +283,7 @@ func (controller GroupController) GetUsers(c *gin.Context) {
 		helpers.ResponseServerErrorJSON(c)
 		fmt.Printf("CheckUserRole service: %s\n", errCheckUserRole.Error())
 	}
-	if role == configs.IBlocked || role == configs.IDeclined {
+	if role == configs.IBlocked {
 		helpers.ResponseForbiddenJSON(c, configs.EcPermissionGroup, "Group not visible")
 		return
 	}

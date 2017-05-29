@@ -70,10 +70,6 @@ const (
 const (
 	IPending    = 1
 	SPending    = "pending"
-	IAccepted   = 2
-	SAccepted   = "accepted"
-	IDeclined   = 3
-	SDeclined   = "declined"
 	IMember     = 4
 	SMember     = "member"
 	IBlocked    = 5

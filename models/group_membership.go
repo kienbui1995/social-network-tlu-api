@@ -8,7 +8,7 @@ type GroupMembership struct {
 	User      *UserObject  `json:"user,omitempty"`
 	Group     *GroupObject `json:"group,omitempty"`
 	Role      int          `json:"role,omitempty"` // 1:member; 2: admin; 3: creator 4: block
-	Status    int          `json:"status"`
+	Status    int          `json:"status,omitempty"`
 	CanEdit   bool         `json:"can_edit,omitempty"`
 	CanDelete bool         `json:"can_delete,omitempty"`
 }
