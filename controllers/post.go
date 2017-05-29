@@ -635,7 +635,7 @@ func (controller PostController) GetUsers(c *gin.Context) {
 func (controller PostController) CreateGroupPost(c *gin.Context) {
 	groupID, errParseInt := strconv.ParseInt(c.Param("id"), 10, 64)
 	if errParseInt != nil {
-		helpers.ResponseBadRequestJSON(c, configs.EcParamUserID, "Invalid user id")
+		helpers.ResponseBadRequestJSON(c, configs.EcParamUserID, "Invalid group id")
 		return
 	}
 
@@ -730,4 +730,37 @@ func (controller PostController) CreateGroupPost(c *gin.Context) {
 	} else {
 		fmt.Printf("Create services: Don't create group post")
 	}
+}
+
+// GetAllGroupPost func
+func (controller PostController) GetAllGroupPost(c *gin.Context) {
+	groupID, errParseInt := strconv.ParseInt(c.Param("id"), 10, 64)
+	if errParseInt != nil {
+		helpers.ResponseBadRequestJSON(c, configs.EcParamUserID, "Invalid group id")
+		return
+	}
+
+	//check permisson
+	myUserID, errGetUserIDFromToken := GetUserIDFromToken(c.Request.Header.Get("token"))
+	if errGetUserIDFromToken != nil {
+		helpers.ResponseAuthJSON(c, 200, "Permissions error")
+		return
+	}
+	params := helpers.ParamsGetAll{}
+	params.Skip, _ = strconv.Atoi(c.DefaultQuery("skip", configs.SSkip))
+	params.Limit, _ = strconv.Atoi(c.DefaultQuery("limit", configs.SLimit))
+	params.Type = c.DefaultQuery("type", configs.SPost)
+	if (params.Type != configs.SPostPhoto && params.Type != configs.SPostStatus) && params.Type != configs.SPost {
+		helpers.ResponseBadRequestJSON(c, configs.EcParam, "Invalid parameter: type")
+		return
+	}
+	params.Sort = c.DefaultQuery("sort", configs.SSort)
+	params.Sort, _ = helpers.ConvertSort(params.Sort)
+	posts, errGetAll := controller.Service.GetAllGroupPosts(params, groupID, myUserID)
+	if errGetAll != nil {
+		helpers.ResponseServerErrorJSON(c)
+		fmt.Printf("GetAll service: %s\n", errGetAll.Error())
+		return
+	}
+	helpers.ResponseEntityListJSON(c, 1, "Get user list successful", posts, params, len(posts))
 }

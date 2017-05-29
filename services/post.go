@@ -46,6 +46,7 @@ type PostServiceInterface interface {
 
 	// work with group
 	CreateGroupPost(post models.Post, groupID int64, userID int64) (int64, error)
+	GetAllGroupPosts(params helpers.ParamsGetAll, groupID int64, myUserID int64) ([]models.Post, error)
 }
 
 // postService struct
@@ -1029,4 +1030,94 @@ func (service postService) CreateGroupPost(post models.Post, groupID int64, user
 		return res[0].ID, nil
 	}
 	return -1, nil
+}
+
+// GetAll func
+// helpers.ParamsGetAll
+// models.Post error
+func (service postService) GetAllGroupPosts(params helpers.ParamsGetAll, groupID int64, myUserID int64) ([]models.Post, error) {
+	var stmt string
+	if params.Type == configs.SPostPhoto {
+		stmt = fmt.Sprintf(`
+		    MATCH(g:Group) WHERE ID(g) = {groupID}
+				MATCH(me:User) WHERE ID(me) = {myuserid}
+		  	MATCH (s:Photo:Post)<-[r:HAS]-(g)
+				WHERE s.privacy = 1 OR (s.privacy = 2 AND exists((me)-[:FOLLOW]->(u))) OR {userid} = {myuserid}
+				RETURN
+					ID(s) AS id,
+					substring(s.message,0,250) AS message, length(s.message)>250 AS summary,
+					CASE s.photo when null then "" else s.photo end AS photo,
+					s.created_at AS created_at, s.updated_at AS updated_at,
+					CASE s.privacy when null then 1 else s.privacy end AS privacy, CASE s.status when null then 1 else s.status end AS status,
+					s.likes AS likes, s.comments AS comments, s.shares AS shares,
+					u{id:ID(u), .username, .full_name, .avatar} AS owner,
+					exists((me)-[:LIKE]->(s)) AS is_liked,
+					CASE WHEN {userid} = {myuserid} THEN true ELSE false END AS can_edit,
+					CASE WHEN {userid} = {myuserid} THEN true ELSE false END AS can_delete
+				ORDER BY %s
+				SKIP {skip}
+				LIMIT {limit}
+		  	`, params.Sort)
+	} else if params.Type == configs.SPostStatus {
+		stmt = fmt.Sprintf(`
+		    MATCH(u:User) WHERE ID(u) = {userid}
+				MATCH(me:User) WHERE ID(me) = {myuserid}
+		  	MATCH (s:Status:Post)<-[r:POST]-(u)
+				WHERE s.privacy = 1 OR (s.privacy = 2 AND exists((me)-[:FOLLOW]->(u))) OR {userid} = {myuserid}
+				RETURN
+					ID(s) AS id,
+					substring(s.message,0,250) AS message, length(s.message)>250 AS summary,
+					s.created_at AS created_at, s.updated_at AS updated_at,
+					case s.privacy when null then 1 else s.privacy end AS privacy, case s.status when null then 1 else s.status end AS status,
+					s.likes AS likes, s.comments AS comments, s.shares AS shares,
+					u{id:ID(u), .username, .full_name, .avatar} AS owner,
+					exists((me)-[:LIKE]->(s)) AS is_liked,
+					CASE WHEN {userid} = {myuserid} THEN true ELSE false END AS can_edit,
+					CASE WHEN {userid} = {myuserid} THEN true ELSE false END AS can_delete
+				ORDER BY %s
+				SKIP {skip}
+				LIMIT {limit}
+		  	`, params.Sort)
+	} else if params.Type == configs.SPost {
+		stmt = fmt.Sprintf(`
+		    MATCH(u:User) WHERE ID(u) = {userid}
+				MATCH(me:User) WHERE ID(me) = {myuserid}
+		  	MATCH (s:Post)<-[r:POST]-(u)
+				WHERE s.privacy = 1 OR (s.privacy = 2 AND exists((me)-[:FOLLOW]->(u))) OR {userid} = {myuserid}
+				RETURN
+					ID(s) AS id,
+					substring(s.message,0,250) AS message, length(s.message)>250 AS summary,
+					case s.photo when null then "" else s.photo end AS photo,
+					s.created_at AS created_at, s.updated_at AS updated_at,
+					case s.privacy when null then 1 else s.privacy end AS privacy, case s.status when null then 1 else s.status end AS status,
+					s.likes AS likes, s.comments AS comments, s.shares AS shares,
+					u{id:ID(u), .username, .full_name, .avatar} AS owner,
+					exists((me)-[:LIKE]->(s)) AS is_liked,
+					CASE WHEN {userid} = {myuserid} THEN true ELSE false END AS can_edit,
+					CASE WHEN {userid} = {myuserid} THEN true ELSE false END AS can_delete
+				ORDER BY %s
+				SKIP {skip}
+				LIMIT {limit}
+		  	`, params.Sort)
+	}
+	paramsQuery := map[string]interface{}{
+		"groupID":  groupID,
+		"myuserid": myUserID,
+		"skip":     params.Skip,
+		"limit":    params.Limit,
+	}
+	res := []models.Post{}
+	cq := neoism.CypherQuery{
+		Statement:  stmt,
+		Parameters: paramsQuery,
+		Result:     &res,
+	}
+	err := conn.Cypher(&cq)
+	if err != nil {
+		return nil, err
+	}
+	if len(res) > 0 {
+		return res, nil
+	}
+	return nil, nil
 }

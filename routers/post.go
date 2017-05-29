@@ -40,6 +40,7 @@ func AddRoutesPosts(r *gin.RouterGroup) {
 	routesGroup := r.Group("/groups")
 	{
 		routesGroup.POST("/:id/posts", controller.CreateGroupPost)
-		routesGroup.GET("/:id/posts", controller.GetAll)
+		routesGroup.GET("/:id/posts", controller.GetAllGroupPost)
+
 	}
 }

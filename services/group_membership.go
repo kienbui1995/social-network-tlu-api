@@ -313,7 +313,7 @@ func (service groupMembershipService) Update(membership models.GroupMembership) 
 	MATCH (u:User)-[r:JOIN]->(g:Group)
 	WHERE ID(r) = {membershipID}
 	SET g.pending_requests = CASE WHEN r.status = 0 AND {status}= 1 THEN  g.pending_requests -1  ELSE g.pending_requests END,
-			g.members = CASE WHEN r.status = 0 AND {status}= 1 THEN  g.pending_requests -1 ELSE g.pending_requests END
+			g.members = CASE WHEN r.status = 0 AND {status}= 1 THEN  g.pending_requests -1 ELSE g.pending_requests END,
 	r.updated_at = TIMESTAMP(), r.role = {role}, r.status = {status}
 	RETURN
 		ID(r) AS id, r.created_at AS created_at, r.updated_at AS updated_at,
