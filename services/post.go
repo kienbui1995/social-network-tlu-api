@@ -232,7 +232,8 @@ func (service postService) Create(post models.Post, myUserID int64) (int64, erro
 		stmt = `
 		    MATCH(u:User) WHERE ID(u) = {fromid}
 		  	CREATE (s:Status:Post { props } )<-[r:POST]-(u)
-				SET s.created_at = TIMESTAMP()
+				CREATE (u)-[f:FOLLOW]->(s)
+				SET s.created_at = TIMESTAMP(), f.created_at = TIMESTAMP()
 				RETURN ID(s) as id
 		  	`
 	} else {
@@ -248,7 +249,8 @@ func (service postService) Create(post models.Post, myUserID int64) (int64, erro
 		stmt = `
 		    MATCH(u:User) WHERE ID(u) = {fromid}
 		  	CREATE (s:Photo:Post { props } )<-[r:POST]-(u)
-				SET s.created_at = TIMESTAMP()
+				CREATE (u)-[f:FOLLOW]->(s)
+				SET s.created_at = TIMESTAMP(), f.created_at = TIMESTAMP()
 				RETURN ID(s) as id
 		  	`
 	}
@@ -996,7 +998,8 @@ func (service postService) CreateGroupPost(post models.Post, groupID int64, user
 		    MATCH(u:User) WHERE ID(u) = {userID}
 				MATCH(g:Group) WHERE ID(g) = {groupID}
 		  	CREATE (g)-[h:HAS]->(s:Status:Post { props } )<-[r:POST]-(u)
-				SET s.created_at = TIMESTAMP(), g.posts= g.posts+1
+				CREATE (u)-[f:FOLLOW]->(s)
+				SET s.created_at = TIMESTAMP(), g.posts= g.posts+1, f.created_at = TIMESTAMP()
 				RETURN ID(s) as id
 		  	`
 	} else {

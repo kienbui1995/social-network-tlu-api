@@ -64,29 +64,48 @@ func (service homeService) FindUserByUsernameAndFullName(name string, myUserID i
 // []models.Post error
 func (service homeService) GetNewsFeed(params helpers.ParamsGetAll, myUserID int64) ([]models.Post, error) {
 	stmt := fmt.Sprintf(`
-		MATCH(u:User) WHERE ID(u)= {userid}
-		MATCH(u)-[:FOLLOW]->(u1:User)-[:POST]->(s:Post)
-		WHERE s.privacy = 1 OR (s.privacy = 2 AND exists((u)-[:FOLLOW]->(u1))) OR u1 = u
-		RETURN
-			ID(s) AS id, s.message AS message, s.created_at AS created_at,
-		  case s.uploaded_at when null then "" else s.uploaded_at end AS uploaded_at,
-			case s.photo when null then "" else s.photo end AS photo,
-			case s.privacy when null then 1 else s.privacy end AS privacy,
-			case s.status when null then 1 else s.status end AS status,
-			u1{id:ID(u1), .username, .full_name, . avatar} as owner,
-			s.likes AS likes, s.comments AS comments, s.shares AS shares,
-			exists((u)-[:LIKE]->(s)) AS is_liked,
-			CASE WHEN ID(u1) = {userid} THEN true ELSE false END AS can_edit,
-			CASE WHEN ID(u1) = {userid} THEN true ELSE false END AS can_delete
-	ORDER BY %s
-	SKIP {skip}
-	LIMIT {limit}
-	`, params.Sort)
+		MATCH (u:User)-[:POST]->(p:Post)<-[:HAS]-(g:Group)<-[j:JOIN{status:1}]-(me:User)
+		WHERE ID(me) = {myUserID} AND 3>=j.role>=1
+		WITH
+		collect(
+		p{
+		id:ID(p),.*,
+		message: substring(p.message,0,250),
+		summary: size(p.message)>250,
+		owner: u{id:ID(u), .username, .full_name, .avatar},
+		place: g{id:ID(g), .name, .avatar},
+		is_liked: exists((me)-[:LIKE]->(p)),
+		is_following: exists((me)-[:FOLLOW]->(p)),
+		can_edit: CASE WHEN ID(u) = ID(me) THEN true ELSE false END,
+		can_delete: CASE WHEN ID(u) = ID(me) OR exists((me)-[:JOIN{role:2}]->(g))OR exists((me)-[:JOIN{role:3}]->(g)) THEN true ELSE false END
+		}) AS posts1, me
+
+		MATCH(me)-[:FOLLOW]->(u:User)-[:POST]->(p:Post)
+		WHERE (p.privacy = 1 OR (p.privacy = 2 AND exists((me)-[:FOLLOW]->(u))) OR u = me) AND exists((:Group)-[:HAS]->(p))=false
+		WITH
+		collect(
+		p{
+		id:ID(p),.*,
+		message: substring(p.message,0,250),
+		summary: size(p.message)>250,
+		owner: u{id:ID(u), .username, .full_name, .avatar},
+		is_liked: exists((me)-[:LIKE]->(p)),
+		is_following: exists((me)-[:FOLLOW]->(p)),
+		can_edit: CASE WHEN ID(u) = ID(me) THEN true ELSE false END,
+		can_delete:	CASE WHEN ID(u) = ID(me) THEN true ELSE false END
+		}) AS posts2, posts1
+		WITH  posts1+posts2 AS posts
+		UNWIND posts as post
+		RETURN post
+		ORDER BY %s
+		SKIP {skip}
+		LIMIT {limit}
+	`, "post."+params.Sort)
 	res := []models.Post{}
 	paramsQuery := map[string]interface{}{
-		"userid": myUserID,
-		"skip":   params.Skip,
-		"limit":  params.Limit,
+		"myUserID": myUserID,
+		"skip":     params.Skip,
+		"limit":    params.Limit,
 	}
 	cq := neoism.CypherQuery{
 		Statement:  stmt,
@@ -110,24 +129,39 @@ func (service homeService) GetNewsFeed(params helpers.ParamsGetAll, myUserID int
 // []models.Post error
 func (service homeService) GetNewsFeedWithPageRank(params helpers.ParamsGetAll, myUserID int64) ([]models.Post, error) {
 	stmt := `
-	MATCH(u:User) WHERE ID(u)= {myUserID}
-	MATCH(u)-[:FOLLOW]->(u1:User)-[:POST]->(p:Post)
-	WHERE p.privacy = 1 OR (p.privacy = 2 AND exists((u)-[:FOLLOW]->(u1))) OR u1 = u
-		WITH u, u1, COLLECT(p) as posts
-  CALL apoc.algo.pageRank(posts) YIELD node AS s, score
-  RETURN
-		ID(s) AS id, s.message AS message, s.created_at AS created_at,
-		case s.updated_at when null then "" else s.updated_at end AS updated_at,
-		case s.photo when null then "" else s.photo end AS photo,
-		case s.privacy when null then 1 else s.privacy end AS privacy,
-		case s.status when null then 1 else s.status end AS status,
-		u1{id:ID(u1), .username, .full_name, .avatar} AS owner,
-		s.likes AS likes, s.comments AS comments, s.shares AS shares,
-		exists((u)-[:LIKE]->(s)) AS is_liked,
-					exists ((u)-[:FOLLOW]->(s)) AS is_followed,
-		CASE WHEN ID(u1) = {myUserID} THEN true ELSE false END AS can_edit,
-		CASE WHEN ID(u1) = {myUserID} THEN true ELSE false END AS can_delete
-	ORDER BY score*TIMESTAMP()/((TIMESTAMP()- created_at)/10+1) DESC
+	MATCH (u:User)-[:POST]->(p:Post)<-[:HAS]-(g:Group)<-[j:JOIN{status:1}]-(me:User)
+	WHERE ID(me) = {myUserID} AND 3>=j.role>=1
+	WITH
+	collect(
+	p{
+	id:ID(p),.*,
+	message: substring(p.message,0,250),
+	summary: size(p.message)>250,
+	owner: u{id:ID(u), .username, .full_name, .avatar},
+	place: g{id:ID(g), .name, .avatar},
+	is_liked: exists((me)-[:LIKE]->(p)),
+	is_following: exists((me)-[:FOLLOW]->(p)),
+	can_edit: CASE WHEN ID(u) = ID(me) THEN true ELSE false END,
+	can_delete: CASE WHEN ID(u) = ID(me) OR exists((me)-[:JOIN{role:2}]->(g))OR exists((me)-[:JOIN{role:3}]->(g)) THEN true ELSE false END
+	}) AS posts1, me
+
+	MATCH(me)-[:FOLLOW]->(u:User)-[:POST]->(p:Post)
+	WHERE (p.privacy = 1 OR (p.privacy = 2 AND exists((me)-[:FOLLOW]->(u))) OR u = me) AND exists((:Group)-[:HAS]->(p))=false
+	WITH
+	collect(
+	p{
+	id:ID(p),.*,
+	message: substring(p.message,0,250),
+	summary: size(p.message)>250,
+	owner: u{id:ID(u), .username, .full_name, .avatar},
+	is_liked: exists((me)-[:LIKE]->(p)),
+	is_following: exists((me)-[:FOLLOW]->(p)),
+	can_edit: CASE WHEN ID(u) = ID(me) THEN true ELSE false END,
+	can_delete:	CASE WHEN ID(u) = ID(me) THEN true ELSE false END
+	}) AS posts2, posts1
+	WITH  posts1+posts2 AS posts
+	UNWIND posts as post
+	RETURN post
 	SKIP {skip}
 	LIMIT {limit}
 	`

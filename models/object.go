@@ -43,3 +43,17 @@ type PlaceObject struct {
 func (object PlaceObject) IsEmpty() bool {
 	return object == PlaceObject{}
 }
+
+// PostObject struct
+type PostObject struct {
+}
+
+// ActorObject struct
+type ActorObject struct {
+	*PostObject `json:"omitempty"`
+}
+
+// IsEmpty func
+func (object ActorObject) IsEmpty() bool {
+	return object == ActorObject{}
+}
