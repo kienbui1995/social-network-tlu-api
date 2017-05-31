@@ -97,23 +97,11 @@ func (service homeService) GetNewsFeed(params helpers.ParamsGetAll, myUserID int
 		}) AS posts2, posts1
 		WITH  posts1+posts2 AS posts
 		UNWIND posts AS p
-		return collect(p{
-			.*,
-			can_report_to_admin: false,
-			is_reported: false,
-			shares: CASE p.shares WHEN NULL THEN 0 ELSE p.shares END,
-			comments: CASE p.comments WHEN NULL THEN 0 ELSE p.comments END,
-			likes: CASE p.likes WHEN NULL THEN 0 ELSE p.likes END,
-			privacy: CASE p.privacy WHEN NULL THEN 1 ELSE p.privacy END,
-			photo: CASE p.photo WHEN NULL THEN "" ELSE p.photo END,
-			created_at: p.created_at,
-			updated_at: CASE p.updated_at WHEN NULL THEN "" ELSE p.updated_at END,
-			status: CASE p.status WHEN NULL THEN "" ELSE p.status END
+		WITH p ORDER BY %s
+		RETURN collect(p{
+			.*
 		} ) as post
-		ORDER BY %s
-		SKIP {skip}
-		LIMIT {limit}
-	`, "post."+params.Sort)
+	`, "p."+params.Sort)
 	res := []struct {
 		Post []models.Post `json:"post"`
 	}{}
@@ -176,17 +164,7 @@ func (service homeService) GetNewsFeedWithPageRank(params helpers.ParamsGetAll, 
 	WITH  posts1+posts2 AS posts
 	UNWIND posts AS p
 	return collect(p{
-		.*,
-		can_report_to_admin: false,
-		is_reported: false,
-		shares: CASE p.shares WHEN NULL THEN 0 ELSE p.shares END,
-		comments: CASE p.comments WHEN NULL THEN 0 ELSE p.comments END,
-		likes: CASE p.likes WHEN NULL THEN 0 ELSE p.likes END,
-		privacy: CASE p.privacy WHEN NULL THEN 1 ELSE p.privacy END,
-		photo: CASE p.photo WHEN NULL THEN "" ELSE p.photo END,
-		created_at: p.created_at,
-		updated_at: CASE p.updated_at WHEN NULL THEN "" ELSE p.updated_at END,
-		status: CASE p.status WHEN NULL THEN "" ELSE p.status END
+		.*
 	} ) AS post
 	`
 	res := []struct {
