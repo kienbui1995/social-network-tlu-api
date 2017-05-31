@@ -355,10 +355,10 @@ func (service groupMembershipService) Delete(membershipID int64) (bool, error) {
 			MATCH (g:Group)<-[r:JOIN]-(u:User)
 			WHERE ID(r) = {membershipID}
 			SET g.members = CASE r.status WHEN 1 THEN g.members - 1
-																		WHEN 0 THEN g.members
+																		ELSE g.members
 											END,
 					g.pending_requests = CASE r.status WHEN 0 THEN g.pending_requests - 1
-																		         WHEN 1 THEN g.pending_requests
+																		         ELSE g.pending_requests
 											END
 			DELETE r
 			`
@@ -382,10 +382,10 @@ func (service groupMembershipService) DeleteByUser(groupID int64, userID int64) 
 			MATCH (g:Group)<-[r:JOIN]-(u:User)
 			WHERE ID(g) = {groupID} AND ID(u) = {userID}
 			SET g.members = CASE r.status WHEN 1 THEN g.members - 1
-																		WHEN 0 THEN g.members
+																		ELSE g.members
 											END,
 					g.pending_requests = CASE r.status WHEN 0 THEN g.pending_requests - 1
-																		         WHEN 1 THEN g.pending_requests
+																		         ELSE g.pending_requests
 											END
 			DELETE r
 			`
