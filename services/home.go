@@ -120,6 +120,11 @@ func (service homeService) GetNewsFeed(params helpers.ParamsGetAll, myUserID int
 		return nil, err
 	}
 	if len(res) > 0 {
+		if params.Limit+params.Skip > len(res[0].Post) {
+			params.Limit = len(res[0].Post)
+		} else {
+			params.Limit = params.Limit + params.Skip
+		}
 		return res[0].Post[params.Skip:params.Limit], nil
 	}
 	return nil, nil
@@ -187,6 +192,11 @@ func (service homeService) GetNewsFeedWithPageRank(params helpers.ParamsGetAll, 
 	}
 
 	if len(res) > 0 {
+		if params.Limit+params.Skip > len(res[0].Post) {
+			params.Limit = len(res[0].Post)
+		} else {
+			params.Limit = params.Limit + params.Skip
+		}
 		return res[0].Post[params.Skip:params.Limit], nil
 	}
 	return nil, nil
