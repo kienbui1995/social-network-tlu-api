@@ -3,7 +3,7 @@ package models
 // Post struct to include info of core Post
 type Post struct {
 	Owner            *UserObject  `json:"owner"`
-	Place            *PlaceObject `json:"place,omitempty"`
+	Place            *GroupObject `json:"place,omitempty"`
 	ID               int64        `json:"id"` //Id
 	Message          string       `json:"message"`
 	Summary          bool         `json:"summary,omitempty"` // true, if message length more than 250
@@ -16,10 +16,10 @@ type Post struct {
 	Comments         int          `json:"comments,omitempty"`
 	Shares           int          `json:"shares,omitempty"`
 	IsFollowing      bool         `json:"is_following,omitempty"`
-	IsLiked          bool         `json:"is_liked"`
+	IsLiked          bool         `json:"is_liked,omitempty"`
 	IsReported       bool         `json:"is_reported,omitempty"`
-	CanEdit          bool         `json:"can_edit"`
-	CanDelete        bool         `json:"can_delete"`
+	CanEdit          bool         `json:"can_edit,omitempty"`
+	CanDelete        bool         `json:"can_delete,omitempty"`
 	CanReportToAdmin bool         `json:"can_report_to_admin,omitempty"`
 }
 

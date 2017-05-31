@@ -69,7 +69,8 @@ func (service homeService) GetNewsFeed(params helpers.ParamsGetAll, myUserID int
 		WITH
 		collect(
 		p{
-		id:ID(p),.*,
+		id:ID(p),
+		.*,
 		message: substring(p.message,0,250),
 		summary: size(p.message)>250,
 		owner: u{id:ID(u), .username, .full_name, .avatar},
@@ -85,7 +86,7 @@ func (service homeService) GetNewsFeed(params helpers.ParamsGetAll, myUserID int
 		WITH
 		collect(
 		p{
-		id:ID(p),.*,
+		id:ID(p), .*,
 		message: substring(p.message,0,250),
 		summary: size(p.message)>250,
 		owner: u{id:ID(u), .username, .full_name, .avatar},
@@ -95,13 +96,27 @@ func (service homeService) GetNewsFeed(params helpers.ParamsGetAll, myUserID int
 		can_delete:	CASE WHEN ID(u) = ID(me) THEN true ELSE false END
 		}) AS posts2, posts1
 		WITH  posts1+posts2 AS posts
-		UNWIND posts as post
-		RETURN post
+		UNWIND posts AS p
+		return collect(p{
+			.*,
+			can_report_to_admin: false,
+			is_reported: false,
+			shares: CASE p.shares WHEN NULL THEN 0 ELSE p.shares END,
+			comments: CASE p.comments WHEN NULL THEN 0 ELSE p.comments END,
+			likes: CASE p.likes WHEN NULL THEN 0 ELSE p.likes END,
+			privacy: CASE p.privacy WHEN NULL THEN 1 ELSE p.privacy END,
+			photo: CASE p.photo WHEN NULL THEN "" ELSE p.photo END,
+			created_at: p.created_at,
+			updated_at: CASE p.updated_at WHEN NULL THEN "" ELSE p.updated_at END,
+			status: CASE p.status WHEN NULL THEN "" ELSE p.status END
+		} ) as post
 		ORDER BY %s
 		SKIP {skip}
 		LIMIT {limit}
 	`, "post."+params.Sort)
-	res := []models.Post{}
+	res := []struct {
+		Post []models.Post `json:"post"`
+	}{}
 	paramsQuery := map[string]interface{}{
 		"myUserID": myUserID,
 		"skip":     params.Skip,
@@ -117,9 +132,7 @@ func (service homeService) GetNewsFeed(params helpers.ParamsGetAll, myUserID int
 		return nil, err
 	}
 	if len(res) > 0 {
-		if res[0].ID >= 0 {
-			return res, nil
-		}
+		return res[0].Post[params.Skip : params.Limit-params.Skip], nil
 	}
 	return nil, nil
 }
@@ -134,7 +147,8 @@ func (service homeService) GetNewsFeedWithPageRank(params helpers.ParamsGetAll, 
 	WITH
 	collect(
 	p{
-	id:ID(p),.*,
+	id:ID(p),
+	.*,
 	message: substring(p.message,0,250),
 	summary: size(p.message)>250,
 	owner: u{id:ID(u), .username, .full_name, .avatar},
@@ -150,7 +164,7 @@ func (service homeService) GetNewsFeedWithPageRank(params helpers.ParamsGetAll, 
 	WITH
 	collect(
 	p{
-	id:ID(p),.*,
+	id:ID(p), .*,
 	message: substring(p.message,0,250),
 	summary: size(p.message)>250,
 	owner: u{id:ID(u), .username, .full_name, .avatar},
@@ -160,12 +174,24 @@ func (service homeService) GetNewsFeedWithPageRank(params helpers.ParamsGetAll, 
 	can_delete:	CASE WHEN ID(u) = ID(me) THEN true ELSE false END
 	}) AS posts2, posts1
 	WITH  posts1+posts2 AS posts
-	UNWIND posts as post
-	RETURN post
-	SKIP {skip}
-	LIMIT {limit}
+	UNWIND posts AS p
+	return collect(p{
+		.*,
+		can_report_to_admin: false,
+		is_reported: false,
+		shares: CASE p.shares WHEN NULL THEN 0 ELSE p.shares END,
+		comments: CASE p.comments WHEN NULL THEN 0 ELSE p.comments END,
+		likes: CASE p.likes WHEN NULL THEN 0 ELSE p.likes END,
+		privacy: CASE p.privacy WHEN NULL THEN 1 ELSE p.privacy END,
+		photo: CASE p.photo WHEN NULL THEN "" ELSE p.photo END,
+		created_at: p.created_at,
+		updated_at: CASE p.updated_at WHEN NULL THEN "" ELSE p.updated_at END,
+		status: CASE p.status WHEN NULL THEN "" ELSE p.status END
+	} ) AS post
 	`
-	res := []models.Post{}
+	res := []struct {
+		Post []models.Post `json:"post"`
+	}{}
 	paramsQuery := map[string]interface{}{
 		"myUserID": myUserID,
 		"skip":     params.Skip,
@@ -176,14 +202,14 @@ func (service homeService) GetNewsFeedWithPageRank(params helpers.ParamsGetAll, 
 		Parameters: paramsQuery,
 		Result:     &res,
 	}
+
 	err := conn.Cypher(&cq)
 	if err != nil {
 		return nil, err
 	}
+
 	if len(res) > 0 {
-		if res[0].ID >= 0 {
-			return res, nil
-		}
+		return res[0].Post[params.Skip : params.Limit-params.Skip], nil
 	}
 	return nil, nil
 }
