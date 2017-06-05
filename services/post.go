@@ -434,17 +434,17 @@ func (service postService) GetUserIDByPostID(postID int64) (int64, error) {
 // int error
 func (service postService) CreateLike(postID int64, userID int64) (int, error) {
 	stmt := `
-		MATCH(u:User) WHERE ID(u) = {userid}
-		MATCH(s:Post) WHERE ID(s) = {postid}
+		MATCH(u:User) WHERE ID(u) = {userID}
+		MATCH(s:Post) WHERE ID(s) = {postID}
 		MERGE(u)-[l:LIKE]->(s)
 		ON CREATE SET l.created_at = TIMESTAMP(), s.likes = s.likes + 1
 		MERGE(u)-[f:FOLLOW]->(s)
-		ON CREATE f.created_at = TIMESTAMP()
+		ON CREATE SET f.created_at = TIMESTAMP()
 		RETURN exists((u)-[l]->(s)) AS liked, s.likes AS likes
 		`
 	params := map[string]interface{}{
-		"postid": postID,
-		"userid": userID,
+		"postID": postID,
+		"userID": userID,
 	}
 	res := []struct {
 		Liked bool `json:"liked"`
