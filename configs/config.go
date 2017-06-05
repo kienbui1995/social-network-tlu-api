@@ -100,6 +100,39 @@ const (
 	SLikedPost     = "liked"
 )
 
+// Const type action notification
+const (
+	IActionLike          = 1 // last user liked post
+	SActionLike          = "like"
+	IActionComment       = 2 // last user commented post
+	SActionComment       = "comment"
+	IActionShare         = 3 // last user shared post
+	SActionShare         = "share"
+	IActionMention       = 4 // last user mentioned me in a post
+	SActionMention       = "mention"
+	IActionPost          = 5 // last post created by a user
+	SActionPost          = "post"
+	IActionFollow        = 6 // last object followed created by a user
+	SActionFollow        = "follow"
+	IActionPostPhoto     = 7 // last photo created by a user
+	SActionPostPhoto     = "photo_post"
+	IActionPostStatus    = 8 // last status created by a user
+	SActionPostStatus    = "status_post"
+	IActionLikedPost     = 9 // last  post liked by a user
+	SActionLikedPost     = "liked_post"
+	IActionCommentedPost = 10 // last  post commented by a user
+	SActionCommentedPost = "commented_post"
+	IActionMentionedPost = 11 // last  post commented by a user
+	SActionMentionedPost = "mentioned_post"
+)
+
+// const time to milliseconds
+const (
+	IOneDay  = 86400000
+	ITwoDays = 172800000
+	IOneWeek = 604800000
+)
+
 // ErrorCode Table
 const (
 	EcSuccess                           = 1   //	Success
@@ -230,6 +263,33 @@ const (
 	SPostSharePage  = "share_page"
 	IPostShareGroup = 7
 	SPostShareGroup = "share_group"
+)
+
+// TypeNotification const
+const (
+	INotiPost    = 1
+	SNotiPost    = "post"
+	INotiFollow  = 2
+	SNotiFollow  = "follow"
+	INotiLike    = 3
+	SNotiLike    = "like"
+	INotiComment = 4
+	SNotiComment = "comment"
+	INotiStatus  = 5
+	SNotiStatus  = "status"
+	INotiPhoto   = 6
+	SNotiPhoto   = "photo"
+	INotiMention = 7
+	SNotiMention = "mention"
+	INotiAll     = 8
+	SNotiAll     = "all"
+)
+
+// Role user
+const (
+	IAdminRole   = 1
+	IStudentRole = 2
+	ITeacherRole = 3
 )
 
 //FCMToken struct

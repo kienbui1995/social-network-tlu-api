@@ -186,6 +186,40 @@ func (service accountService) GetDeviceByUserID(accountID int64) ([]string, erro
 	return nil, nil
 }
 
+// GetDeviceByUserIDs func to get deive list
+// int
+// []string error
+func (service accountService) GetDeviceByUserIDs(accountIDs []int64) ([]string, error) {
+
+	stmt := `
+		MATCH (u:User)-[:LOGGED_IN]->(d:Device)
+		WHERE ID(u) in {accountIDs}
+		RETURN d.device AS device
+			`
+	params := map[string]interface{}{"accountIDs": accountIDs}
+	res := []struct {
+		Device string `json:"device"`
+	}{}
+
+	cq := neoism.CypherQuery{
+		Statement:  stmt,
+		Parameters: params,
+		Result:     &res,
+	}
+	err := conn.Cypher(&cq)
+	if err != nil {
+		return nil, err
+	}
+	if len(res) > 0 {
+		var devices []string
+		for index := 0; index < len(res); index++ {
+			devices = append(devices, res[index].Device)
+		}
+		return devices, nil
+	}
+	return nil, nil
+}
+
 // Create func
 func (service accountService) Create(user models.User) (int64, error) {
 	stmt := `

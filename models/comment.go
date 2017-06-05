@@ -4,7 +4,8 @@ import "github.com/asaskevich/govalidator"
 
 // Comment struct
 type Comment struct {
-	Owner            UserObject      `json:"owner"`
+	Owner            *UserObject     `json:"owner"`
+	Post             *PostObject     `json:"post,omitempty"`
 	ID               int64           `json:"id"`
 	Message          string          `json:"message"`
 	Mentions         []MentionObject `json:"mentions,omitempty"`

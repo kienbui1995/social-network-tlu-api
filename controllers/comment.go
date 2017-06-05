@@ -125,49 +125,15 @@ func (controller CommentController) Create(c *gin.Context) {
 	if errCreate == nil && commentID >= 0 {
 		helpers.ResponseSuccessJSON(c, 1, "Create comment successful", map[string]interface{}{"id": commentID})
 
-		// auto Increase Posts
-		go func() {
-			ok, errIncreasePostComments := controller.Service.IncreasePostComments(postID)
-			if errIncreasePostComments != nil {
-				fmt.Printf("IncreasePostComments service: %s\n", errIncreasePostComments.Error())
-			}
-			if ok != true {
-				fmt.Printf("IncreasePostComments service")
-			}
-		}()
-
 		// push noti
 		go func() {
-			user, _ := services.NewUserService().Get(myUserID)
-			writerID, _ := services.NewPostService().GetUserIDByPostID(postID)
-
-			notify := models.Notification{
-				UserID:     writerID,
-				ObjectID:   postID,
-				ObjectType: "post",
-				Title:      "@" + user.Username + " bình luận bài đăng của bạn",
-				Message:    json.Message,
-			}
-
-			PushTest(notify)
+			NotificationController := NotificationController{Service: services.NewNotificationService()}
+			NotificationController.Create(myUserID, int(configs.IActionComment), postID)
 
 		}()
 
 		// push noti when mention
 		go func() {
-			user, _ := services.NewUserService().Get(myUserID)
-			for _, mention := range json.Mentions {
-				notify := models.Notification{
-					UserID:     mention.ID,
-					ObjectID:   postID,
-					ObjectType: "post",
-					Title:      "@" + user.Username + " nhắc đến bạn trong một bình luận",
-					Message:    json.Message,
-				}
-
-				PushTest(notify)
-
-			}
 
 		}()
 		return
@@ -229,15 +195,10 @@ func (controller CommentController) Delete(c *gin.Context) {
 	if errDelete == nil && deleted == true {
 		helpers.ResponseNoContentJSON(c)
 
-		// auto Decrease Status Comments
+		// auto noti
 		go func() {
-			ok, errDecreasePostComments := controller.Service.DecreasePostComments(postID)
-			if errDecreasePostComments != nil {
-				fmt.Printf("DecreasePostComments service: %s\n", errDecreasePostComments.Error())
-			}
-			if ok != true {
-				fmt.Printf("DecreasePostComments service")
-			}
+			NotificationController := NotificationController{Service: services.NewNotificationService()}
+			NotificationController.Create(writerID, int(configs.IActionComment), postID)
 		}()
 		return
 	}

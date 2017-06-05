@@ -124,15 +124,9 @@ func (controller PostController) Delete(c *gin.Context) {
 	if errDelete == nil && deleted == true {
 		helpers.ResponseNoContentJSON(c)
 
-		// auto Decrease Posts
+		// auto noti
 		go func() {
-			ok, errDecreasePosts := controller.Service.DecreasePosts(userID)
-			if errDecreasePosts != nil {
-				fmt.Printf("DecreasePosts service: %s\n", errDecreasePosts.Error())
-			}
-			if ok != true {
-				fmt.Printf("DecreasePosts service: Don't decrease\n")
-			}
+
 		}()
 
 		return
@@ -182,44 +176,22 @@ func (controller PostController) Create(c *gin.Context) {
 		json.Privacy = 1
 	}
 
-	action := " cập nhật trạng thái"
-	if len(json.Photo) > 0 {
-		action = " đăng ảnh"
-	}
 	post := models.Post{}
 	helpers.Replace(json, &post)
 	postID, errCreate := controller.Service.Create(post, userID)
 	if errCreate == nil && postID >= 0 {
 		helpers.ResponseSuccessJSON(c, 1, "Create user post successful", map[string]interface{}{"id": postID})
 
-		// auto Increase Posts
-		go func() {
-			ok, errIncreasePosts := controller.Service.IncreasePosts(userID)
-			if errIncreasePosts != nil {
-				fmt.Printf("IncreasePosts service: %s\n", errIncreasePosts.Error())
-			}
-			if ok != true {
-				fmt.Printf("IncreasePosts service: Don't increase\n")
-			}
-		}()
+		// // auto noti
+		// go func() {
+		//
+		// }()
 
-		// push noti
-		go func() {
-			user, _ := services.NewUserService().Get(userID)
-			notify := models.Notification{
-				ObjectID:   postID,
-				ObjectType: "post",
-				Title:      "@" + user.Username + action,
-				Message:    json.Message,
-			}
-			ids, errGetIDs := services.NewSubscriberService().GetFollowerIDs(userID)
-			if len(ids) > 0 && errGetIDs == nil {
-				for index := 0; index < len(ids); index++ {
-					notify.UserID = ids[index]
-					PushTest(notify)
-				}
-			}
-		}()
+		// // push noti
+		// go func() {
+		// 	Notification := NotificationController{Service: services.NewNotificationService()}
+		// 	Notification.UpdatePostNotification(userID)
+		// }()
 		return
 	}
 	helpers.ResponseServerErrorJSON(c)
@@ -318,29 +290,10 @@ func (controller PostController) CreateLike(c *gin.Context) {
 	if errCreateLike == nil && likes >= 0 {
 		helpers.ResponseSuccessJSON(c, 1, "Like post successful", map[string]int{"likes": likes})
 
-		// auto Increase post Likes
-		go func() {
-			ok, errIncreaseLikes := controller.Service.IncreaseLikes(postID)
-			if errIncreaseLikes != nil {
-				fmt.Printf("IncreaseLikes service: %s\n", errIncreaseLikes.Error())
-			}
-			if ok != true {
-				fmt.Printf("IncreaseLikes service: don't increase like")
-			}
-		}()
-
 		// push noti
 		go func() {
-			post, _ := controller.Service.Get(postID, myUserID)
-			userLiked, _ := services.NewUserService().Get(myUserID)
-			notify := models.Notification{
-				UserID:     post.Owner.ID,
-				ObjectID:   post.ID,
-				ObjectType: "post",
-				Title:      "@" + userLiked.Username + " thích trạng thái của bạn",
-				Message:    post.Message,
-			}
-			PushTest(notify)
+			Notification := NotificationController{Service: services.NewNotificationService()}
+			Notification.UpdateLikeNotification(postID, myUserID)
 		}()
 		return
 	}
@@ -389,16 +342,11 @@ func (controller PostController) DeleteLike(c *gin.Context) {
 	if errDeleteLike == nil && likes >= 0 {
 		helpers.ResponseSuccessJSON(c, 1, "Unlike successful", map[string]int{"likes": likes})
 
-		// auto Decrease post Likes
-		go func() {
-			ok, errDecreaseLikes := controller.Service.DecreaseLikes(postID)
-			if errDecreaseLikes != nil {
-				fmt.Printf("DecreaseLikes service: %s\n", errDecreaseLikes.Error())
-			}
-			if ok != true {
-				fmt.Printf("DecreaseLikes service: don't decrease\n")
-			}
-		}()
+		// 	// auto noti
+		// 	go func() {
+		// 		Notification := NotificationController{Service: services.NewNotificationService()}
+		// 		Notification.Create(myUserID, int(configs.IActionLike), postID)
+		// 	}()
 		return
 	}
 
@@ -497,19 +445,11 @@ func (controller PostController) CreateFollow(c *gin.Context) {
 	if errCreateFollow == nil && follows >= 0 {
 		helpers.ResponseSuccessJSON(c, 1, "Follow post successful", map[string]int64{"id": follows})
 
-		// push noti
-		go func() {
-			post, _ := controller.Service.Get(postID, myUserID)
-			userLiked, _ := services.NewUserService().Get(myUserID)
-			notify := models.Notification{
-				UserID:     post.Owner.ID,
-				ObjectID:   post.ID,
-				ObjectType: "post",
-				Title:      "@" + userLiked.Username + " theo dõi trạng thái của bạn",
-				Message:    post.Message,
-			}
-			PushTest(notify)
-		}()
+		// // push noti
+		// go func() {
+		// 	NotificationController := NotificationController{Service: services.NewNotificationService()}
+		// 	NotificationController.Create(myUserID, int(configs.IActionLike), postID)
+		// }()
 		return
 	}
 
@@ -736,23 +676,23 @@ func (controller PostController) CreateGroupPost(c *gin.Context) {
 	if errCreate == nil && postID >= 0 {
 		helpers.ResponseSuccessJSON(c, 1, "Create user post successful", map[string]interface{}{"id": postID})
 
-		// push noti
-		go func() {
-			user, _ := services.NewUserService().Get(myUserID)
-			notify := models.Notification{
-				ObjectID:   postID,
-				ObjectType: "post",
-				Title:      "@" + user.Username + action,
-				Message:    json.Message,
-			}
-			ids, errGetIDs := services.NewSubscriberService().GetFollowerIDs(myUserID)
-			if len(ids) > 0 && errGetIDs == nil {
-				for index := 0; index < len(ids); index++ {
-					notify.UserID = ids[index]
-					PushTest(notify)
-				}
-			}
-		}()
+		// // push noti
+		// go func() {
+		// 	user, _ := services.NewUserService().Get(myUserID)
+		// 	notify := models.Notification{
+		// 		ObjectID:   postID,
+		// 		ObjectType: "post",
+		// 		Title:      "@" + user.Username + action,
+		// 		Message:    json.Message,
+		// 	}
+		// 	ids, errGetIDs := services.NewSubscriberService().GetFollowerIDs(myUserID)
+		// 	if len(ids) > 0 && errGetIDs == nil {
+		// 		for index := 0; index < len(ids); index++ {
+		// 			notify.UserID = ids[index]
+		// 			PushTest(notify)
+		// 		}
+		// 	}
+		// }()
 		return
 	}
 	helpers.ResponseServerErrorJSON(c)

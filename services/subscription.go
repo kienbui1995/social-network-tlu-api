@@ -15,8 +15,6 @@ type SubscriptionServiceInterface interface {
 	GetSubscriptions(userID int64) ([]models.UserFollowObject, error)
 	GetFollowers(userID int64) ([]models.UserFollowObject, error)
 	GetFollowerIDs(userID int64) ([]int64, error)
-	IncreaseFollowersAndFollowings(fromID int64, toID int64) (bool, error)
-	DecreaseFollowersAndFollowings(fromID int64, toID int64) (bool, error)
 	CheckExistObject(objectID int64, objectType string) (bool, error)
 }
 
@@ -36,6 +34,7 @@ func (service subscriptionService) CreateSubscription(fromID int64, toID int64) 
 	MATCH(from:User) WHERE ID(from) = {fromid}
   MATCH (to) WHERE ID(to) = {toid}
   CREATE UNIQUE (from)-[f:FOLLOW{created_at:TIMESTAMP()}]->(to)
+	SET from.followings = from.followings+1, to.followers = to.followers+1
  	RETURN ID(f) as id
 	`
 	res := []struct {
@@ -67,6 +66,7 @@ func (service subscriptionService) DeleteSubcription(fromID int64, toID int64) (
 	stmt := `
   	MATCH (from:User)-[f:FOLLOW]->(to)
     WHERE ID(from) = {fromID} AND ID(to) = {toID}
+		SET from.followings = from.followings-1, to.followers = to.followers -1
     DELETE f
   	`
 	params := neoism.Props{
@@ -179,76 +179,6 @@ func (service subscriptionService) GetFollowerIDs(userID int64) ([]int64, error)
 
 	}
 	return nil, nil
-}
-
-// IncreaseFollowersAndFollowings func
-func (service subscriptionService) IncreaseFollowersAndFollowings(fromID int64, toID int64) (bool, error) {
-	stmt := `
-	MATCH (u1:User),(u2:User)
-	WHERE ID(u1)= {fromid} AND ID(u2) = {toid}
-	SET u1.followings = u1.followings+1, u2.followers = u2.followers+1
-	RETURN ID(u1) AS id1, ID(u2) AS id2
-	`
-	params := neoism.Props{
-		"fromid": fromID,
-		"toid":   toID,
-	}
-	res := []struct {
-		ID1 int64 `json:"id1"`
-		ID2 int64 `json:"id2"`
-	}{}
-
-	cq := neoism.CypherQuery{
-		Statement:  stmt,
-		Parameters: params,
-		Result:     &res,
-	}
-
-	err := conn.Cypher(&cq)
-	if err != nil {
-		return false, err
-	}
-	if len(res) > 0 {
-		if res[0].ID1 == fromID && res[0].ID2 == toID {
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-// DecreaseFollowersAndFollowings func
-func (service subscriptionService) DecreaseFollowersAndFollowings(fromID int64, toID int64) (bool, error) {
-	stmt := `
-	MATCH (u1:User),(u2:User)
-	WHERE ID(u1)= {fromid} and ID(u2) = {toid}
-	SET u1.followings = u1.followings-1, u2.followers = u2.followers-1
-	RETURN ID(u1) as id1, ID(u2) as id2
-	`
-	params := neoism.Props{
-		"fromid": fromID,
-		"toid":   toID,
-	}
-	res := []struct {
-		ID1 int64 `json:"id1"`
-		ID2 int64 `json:"id2"`
-	}{}
-
-	cq := neoism.CypherQuery{
-		Statement:  stmt,
-		Parameters: params,
-		Result:     &res,
-	}
-
-	err := conn.Cypher(&cq)
-	if err != nil {
-		return false, err
-	}
-	if len(res) > 0 {
-		if res[0].ID1 == fromID && res[0].ID2 == toID {
-			return true, nil
-		}
-	}
-	return false, nil
 }
 
 // CheckExistObject

@@ -7,7 +7,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/kienbui1995/social-network-tlu-api/configs"
 	"github.com/kienbui1995/social-network-tlu-api/helpers"
-	"github.com/kienbui1995/social-network-tlu-api/models"
 	"github.com/kienbui1995/social-network-tlu-api/services"
 )
 
@@ -62,30 +61,10 @@ func (controller SubscriptionController) CreateSubscription(c *gin.Context) {
 
 	helpers.ResponseCreatedJSON(c, 1, "Create subscriber successful!", subscriptionID)
 
-	// auto Increase Followers And Followings
-	go func() {
-		ok, errIncreaseFollowersAndFollowings := controller.Service.IncreaseFollowersAndFollowings(fromID, toID)
-		if errIncreaseFollowersAndFollowings != nil {
-			fmt.Printf("IncreaseFollowersAndFollowings service: %s\n", errIncreaseFollowersAndFollowings.Error())
-			return
-		}
-		if ok != true {
-			fmt.Printf("IncreaseFollowersAndFollowings service: don't increase")
-			return
-		}
-	}()
-
 	// push noti
 	go func() {
-		userFollowed, _ := services.NewUserService().Get(fromID)
-		notify := models.Notification{
-			UserID:     toID,
-			ObjectID:   userFollowed.ID,
-			ObjectType: "user",
-			Title:      "@" + userFollowed.Username + " vừa theo dõi bạn",
-			Message:    "",
-		}
-		PushTest(notify)
+		Notification := NotificationController{Service: services.NewNotificationService()}
+		Notification.Create(fromID, int(configs.IActionFollow), toID)
 	}()
 }
 
@@ -120,13 +99,8 @@ func (controller SubscriptionController) DeleteSubscription(c *gin.Context) {
 
 		// auto Decrease Followers And Followings
 		go func() {
-			ok, errDecreaseFollowersAndFollowings := controller.Service.DecreaseFollowersAndFollowings(fromID, toID)
-			if errDecreaseFollowersAndFollowings != nil {
-				fmt.Printf("DecreaseFollowersAndFollowings service: %s", errDecreaseFollowersAndFollowings.Error())
-			}
-			if ok != true {
-				fmt.Printf("DecreaseFollowersAndFollowings service")
-			}
+			Notification := NotificationController{Service: services.NewNotificationService()}
+			Notification.Create(fromID, int(configs.IActionFollow), toID)
 		}()
 
 		helpers.ResponseJSON(c, 200, 1, "Delete subscriber successful", nil)

@@ -46,11 +46,31 @@ func (object PlaceObject) IsEmpty() bool {
 
 // PostObject struct
 type PostObject struct {
+	ID      int64       `json:"id"`
+	Message string      `json:"message"`
+	Photo   string      `json:"photo,omitempty"`
+	Owner   *UserObject `json:"owner,omitempty"`
+}
+
+// CommentObject struct
+type CommentObject struct {
+	ID      int64       `json:"id"`
+	Message string      `json:"message"`
+	Owner   *UserObject `json:"owner,omitempty"`
+	Post    *PostObject `json:"post,omitempty"`
+}
+
+// ChannelObject struct
+type ChannelObject struct {
+	ID     int64  `json:"id"`
+	Name   string `json:"name"`
+	Avatar string `json:"avatar"`
 }
 
 // ActorObject struct
 type ActorObject struct {
-	*PostObject `json:"omitempty"`
+	*UserObject    `json:",omitempty"`
+	*ChannelObject `json:",omitempty"`
 }
 
 // IsEmpty func

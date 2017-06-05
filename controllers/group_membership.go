@@ -130,7 +130,7 @@ func (controller GroupMembershipController) Create(c *gin.Context) {
 		return
 	}
 	if exist != true {
-		helpers.ResponseNotFoundJSON(c, configs.EcNoExistObject, "Not exist group")
+		helpers.ResponseNotFoundJSON(c, configs.EcNoExistObject, "No exist group")
 		return
 	}
 

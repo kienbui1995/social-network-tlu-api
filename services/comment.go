@@ -21,8 +21,6 @@ type CommentServiceInterface interface {
 	CheckExistComment(commentID int64) (bool, error)
 	GetUserIDByComment(commentID int64) (int64, error)
 	GetPostIDbyComment(commentID int64) (int64, error)
-	IncreasePostComments(postID int64) (bool, error)
-	DecreasePostComments(postID int64) (bool, error)
 	CheckPostInteractivePermission(postID int64, userID int64) (bool, error)
 }
 
@@ -144,6 +142,7 @@ func (service commentService) Create(comment models.Comment, postID int64) (int6
 	MATCH (s:Post) WHERE ID(s) = {postid}
 	CREATE (c:Comment { props } ) SET c.created_at = TIMESTAMP()
 	CREATE (u)-[w:WRITE]->(c)-[a:AT]->(s)
+	SET s.comments = s.comments+1
 	RETURN ID(c) AS id
 	`
 
@@ -208,6 +207,7 @@ func (service commentService) CreateWithMention(comment models.Comment, postID i
 	MATCH (s:Post) WHERE ID(s) = {postid}
 	CREATE (c:Comment { props } ) SET c.created_at = TIMESTAMP()
 	CREATE (u)-[w:WRITE]->(c)-[a:AT]->(s)
+	SET s.comments = s.comments+1
 	RETURN ID(c) AS id
 	`
 
@@ -238,6 +238,8 @@ func (service commentService) Delete(commentID int64) (bool, error) {
 	stmt := `
 	MATCH (c:Comment)
 	WHERE ID(c) = {commentID}
+	OPTIONAL MATCH(c)-[]->(p:Post)
+	SET p.comments = p.comments-1
 	DETACH DELETE c
 	`
 	params := map[string]interface{}{
@@ -385,74 +387,6 @@ func (service commentService) GetPostIDbyComment(commentID int64) (int64, error)
 		}
 	}
 	return -1, nil
-}
-
-// IncreasePostComments func
-// int64
-// bool error
-func (service commentService) IncreasePostComments(postID int64) (bool, error) {
-	stmt := `
-	MATCH (p:Post)
-	WHERE ID(p)= {postID}
-	SET p.comments = p.comments+1
-	RETURN ID(p) AS id
-	`
-	params := neoism.Props{
-		"postID": postID,
-	}
-	res := []struct {
-		ID int64 `json:"id"`
-	}{}
-
-	cq := neoism.CypherQuery{
-		Statement:  stmt,
-		Parameters: params,
-		Result:     &res,
-	}
-
-	err := conn.Cypher(&cq)
-	if err != nil {
-		return false, err
-	}
-	if len(res) > 0 {
-		if res[0].ID == postID {
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-// DecreasePostComments func
-// int64
-// bool error
-func (service commentService) DecreasePostComments(postID int64) (bool, error) {
-	stmt := `
-	MATCH (p:Post)
-	WHERE ID(p)= {postID}
-	SET p.comments = p.comments-1
-	RETURN ID(p) AS id
-	`
-	params := neoism.Props{"postID": postID}
-	res := []struct {
-		ID int64 `json:"id"`
-	}{}
-
-	cq := neoism.CypherQuery{
-		Statement:  stmt,
-		Parameters: params,
-		Result:     &res,
-	}
-
-	err := conn.Cypher(&cq)
-	if err != nil {
-		return false, err
-	}
-	if len(res) > 0 {
-		if res[0].ID == postID {
-			return true, nil
-		}
-	}
-	return false, nil
 }
 
 // CheckPostInteractivePermission func to check interactive permisson for user with a post

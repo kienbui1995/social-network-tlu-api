@@ -19,16 +19,12 @@ type PostServiceInterface interface {
 	Update(post models.Post) (models.Post, error)
 	CheckExistPost(postID int64) (bool, error)
 	GetUserIDByPostID(postID int64) (int64, error)
-	IncreasePosts(userID int64) (bool, error)
-	DecreasePosts(userID int64) (bool, error)
 
 	// work with likes
 	CreateLike(postID int64, userID int64) (int, error)
 	GetLikes(postID int64, myUserID int64, params helpers.ParamsGetAll) ([]models.UserLikedObject, error)
 	DeleteLike(postID int64, userID int64) (int, error)
 	CheckExistLike(postID int64, userID int64) (bool, error)
-	IncreaseLikes(postID int64) (bool, error)
-	DecreaseLikes(postID int64) (bool, error)
 	CheckPostInteractivePermission(postID int64, userID int64) (bool, error)
 
 	// work with FOLLOW
@@ -197,6 +193,15 @@ func (service postService) Delete(postID int64) (bool, error) {
 	stmt := `
 	  	MATCH (s:Post)
 			WHERE ID(s) = {postid}
+			OPTIONAL MATCH (g:Group)-[h:HAS]->(s)
+			SET g.posts= g.posts - 1
+			OPTIONAL MATCH (u:User)-[p:POST]->(s)
+			WHERE exists((:Group)-[:HAS]->(s))=false
+			SET u.posts = u.posts - 1
+			OPTIONAL MATCH (c:Comment)-->(s)
+			DETACH DELETE c
+			OPTIONAL MATCH (s)-[]->(n:Notification)
+			DETACH DELETE n
 			DETACH DELETE s
 	  	`
 	params := map[string]interface{}{
@@ -219,8 +224,11 @@ func (service postService) Delete(postID int64) (bool, error) {
 func (service postService) Create(post models.Post, myUserID int64) (int64, error) {
 
 	var p interface{}
+	var action int
+
 	var stmt string
 	if len(post.Photo) == 0 {
+		action = configs.IActionPostStatus
 		p = neoism.Props{
 			"message":  post.Message,
 			"privacy":  post.Privacy,
@@ -232,11 +240,16 @@ func (service postService) Create(post models.Post, myUserID int64) (int64, erro
 		stmt = `
 		    MATCH(u:User) WHERE ID(u) = {fromid}
 		  	CREATE (s:Status:Post { props } )<-[r:POST]-(u)
+				SET u.posts = u.posts + 1
 				CREATE (u)-[f:FOLLOW]->(s)
 				SET s.created_at = TIMESTAMP(), f.created_at = TIMESTAMP()
+				MATCH(u1:User)-[:FOLLOW]->(u)
+				CREATE (s)-[g:GENERATE]->(n:Notification)<-[:HAS]-(u1)
+				SET n.action = {action}, g.created_at = TIMESTAMP(), n.updated_at = TIMESTAMP()
 				RETURN ID(s) as id
 		  	`
 	} else {
+		action = configs.IActionPostPhoto
 		p = neoism.Props{
 			"message":  post.Message,
 			"photo":    post.Photo,
@@ -249,14 +262,19 @@ func (service postService) Create(post models.Post, myUserID int64) (int64, erro
 		stmt = `
 		    MATCH(u:User) WHERE ID(u) = {fromid}
 		  	CREATE (s:Photo:Post { props } )<-[r:POST]-(u)
+				SET u.posts = u.posts + 1
 				CREATE (u)-[f:FOLLOW]->(s)
 				SET s.created_at = TIMESTAMP(), f.created_at = TIMESTAMP()
+				MATCH(u1:User)-[:FOLLOW]->(u)
+				CREATE (s)-[g:GENERATE]->(n:Notification)<-[:HAS]-(u1)
+				SET n.action = {action}, g.created_at = TIMESTAMP(), n.updated_at = TIMESTAMP()
 				RETURN ID(s) as id
 		  	`
 	}
 	params := map[string]interface{}{
 		"props":  p,
 		"fromid": myUserID,
+		"action": action,
 	}
 	res := []struct {
 		ID int64 `json:"id"`
@@ -411,74 +429,6 @@ func (service postService) GetUserIDByPostID(postID int64) (int64, error) {
 	return -1, nil
 }
 
-// IncreasePosts func
-// int64
-// bool error
-func (service postService) IncreasePosts(userID int64) (bool, error) {
-	stmt := `
-	MATCH (u:User)
-	WHERE ID(u)= {userid}
-	SET u.posts = u.posts+1
-	RETURN ID(u) AS id
-	`
-	params := neoism.Props{"userid": userID}
-	res := []struct {
-		ID int64 `json:"id"`
-	}{}
-
-	cq := neoism.CypherQuery{
-		Statement:  stmt,
-		Parameters: params,
-		Result:     &res,
-	}
-
-	err := conn.Cypher(&cq)
-	if err != nil {
-		return false, err
-	}
-	if len(res) > 0 {
-		if res[0].ID == userID {
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-// DecreasePosts func
-// int64
-// bool error
-func (service postService) DecreasePosts(userID int64) (bool, error) {
-	stmt := `
-	MATCH (u:User)
-	WHERE ID(u)= {userid}
-	SET u.posts = u.posts-1
-	RETURN ID(u) AS id
-	`
-	params := neoism.Props{
-		"userid": userID,
-	}
-	res := []struct {
-		ID int64 `json:"id"`
-	}{}
-
-	cq := neoism.CypherQuery{
-		Statement:  stmt,
-		Parameters: params,
-		Result:     &res,
-	}
-
-	err := conn.Cypher(&cq)
-	if err != nil {
-		return false, err
-	}
-	if len(res) > 0 {
-		if res[0].ID == userID {
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
 // CreateLike func
 // int64 int64
 // int error
@@ -487,9 +437,9 @@ func (service postService) CreateLike(postID int64, userID int64) (int, error) {
 		MATCH(u:User) WHERE ID(u) = {userid}
 		MATCH(s:Post) WHERE ID(s) = {postid}
 		MERGE(u)-[l:LIKE]->(s)
-		ON CREATE SET l.created_at = TIMESTAMP()
+		ON CREATE SET l.created_at = TIMESTAMP(), s.likes = s.likes + 1
 		MERGE(u)-[f:FOLLOW]->(s)
-		ON CREATE SET f.created_at = TIMESTAMP()
+		ON CREATE f.created_at = TIMESTAMP()
 		RETURN exists((u)-[l]->(s)) AS liked, s.likes AS likes
 		`
 	params := map[string]interface{}{
@@ -560,6 +510,7 @@ func (service postService) DeleteLike(postID int64, userID int64) (int, error) {
 	stmt := `
 	MATCH (u:User)-[l:LIKE]->(s:Post)
 	WHERE ID(s) = {postid} AND ID(u) = {userid}
+	SET s.likes - 1
 	DELETE l
 	RETURN s.likes AS likes
 	`
@@ -614,76 +565,6 @@ func (service postService) CheckExistLike(postID int64, userID int64) (bool, err
 	}
 	if len(res) > 0 {
 		if res[0].ID >= 0 {
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-// IncreaseLikes func
-// int64
-// bool error
-func (service postService) IncreaseLikes(postID int64) (bool, error) {
-	stmt := `
-	MATCH (s:Post)
-	WHERE ID(s)= {postid}
-	SET s.likes = s.likes+1
-	RETURN ID(s) AS id
-	`
-	params := neoism.Props{
-		"postid": postID,
-	}
-	res := []struct {
-		ID int64 `json:"id"`
-	}{}
-
-	cq := neoism.CypherQuery{
-		Statement:  stmt,
-		Parameters: params,
-		Result:     &res,
-	}
-
-	err := conn.Cypher(&cq)
-	if err != nil {
-		return false, err
-	}
-	if len(res) > 0 {
-		if res[0].ID == postID {
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
-// DecreaseLikes func
-// int64
-// bool error
-func (service postService) DecreaseLikes(postID int64) (bool, error) {
-	stmt := `
-	MATCH (s:Post)
-	WHERE ID(s)= {postid}
-	SET s.likes = s.likes-1
-	RETURN ID(s) AS id
-	`
-	params := neoism.Props{
-		"postid": postID,
-	}
-	res := []struct {
-		ID int64 `json:"id"`
-	}{}
-
-	cq := neoism.CypherQuery{
-		Statement:  stmt,
-		Parameters: params,
-		Result:     &res,
-	}
-
-	err := conn.Cypher(&cq)
-	if err != nil {
-		return false, err
-	}
-	if len(res) > 0 {
-		if res[0].ID == postID {
 			return true, nil
 		}
 	}

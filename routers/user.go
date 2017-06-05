@@ -16,5 +16,6 @@ func AddRoutesUsers(r *gin.RouterGroup) {
 		routes.GET("/:id", controller.Get)
 		routes.DELETE("/:id", controller.Delete)
 		routes.PUT("/:id", controller.Update)
+
 	}
 }
