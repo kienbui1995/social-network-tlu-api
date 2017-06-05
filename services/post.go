@@ -202,6 +202,7 @@ func (service postService) Delete(postID int64) (bool, error) {
 			WITH s
 			OPTIONAL MATCH (c:Comment)-->(s)
 			DETACH DELETE c
+			WITH s
 			OPTIONAL MATCH (s)-[]->(n:Notification)
 			DETACH DELETE n
 			DETACH DELETE s
