@@ -195,9 +195,11 @@ func (service postService) Delete(postID int64) (bool, error) {
 			WHERE ID(s) = {postid}
 			OPTIONAL MATCH (g:Group)-[h:HAS]->(s)
 			SET g.posts= g.posts - 1
+			WITH s
 			OPTIONAL MATCH (u:User)-[p:POST]->(s)
 			WHERE exists((:Group)-[:HAS]->(s))=false
 			SET u.posts = u.posts - 1
+			WITH s
 			OPTIONAL MATCH (c:Comment)-->(s)
 			DETACH DELETE c
 			OPTIONAL MATCH (s)-[]->(n:Notification)
