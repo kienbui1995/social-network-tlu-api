@@ -240,7 +240,7 @@ func (service groupMembershipService) Create(groupID int64, userID int64) (int64
 					r += CASE g.privacy WHEN 1 THEN {status: 1, role: 1}
 															WHEN 2 THEN {status: 0}
 							 END,
-					g.members = CASE g.privacy WHEN 1 THEN g.members = g.members+1
+					g.members = CASE g.privacy WHEN 1 THEN g.members+1
 																		 ELSE g.members
 											END,
 					g.pending_requests = CASE g.privacy WHEN 2 THEN g.pending_requests+1
