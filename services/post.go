@@ -460,7 +460,7 @@ func (service postService) CreateLike(postID int64, userID int64) (int, error) {
 		return -1, err
 	}
 	if len(res) > 0 && res[0].Liked == true {
-		return res[0].Likes + 1, nil
+		return res[0].Likes, nil
 	}
 	return -1, nil
 }
@@ -531,7 +531,7 @@ func (service postService) DeleteLike(postID int64, userID int64) (int, error) {
 		return -1, err
 	}
 	if len(res) > 0 {
-		return res[0].Likes - 1, nil
+		return res[0].Likes, nil
 	}
 	return -1, nil
 }
