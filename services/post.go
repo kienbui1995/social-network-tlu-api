@@ -509,14 +509,14 @@ func (service postService) GetLikes(postID int64, myUserID int64, params helpers
 func (service postService) DeleteLike(postID int64, userID int64) (int, error) {
 	stmt := `
 	MATCH (u:User)-[l:LIKE]->(s:Post)
-	WHERE ID(s) = {postid} AND ID(u) = {userid}
-	SET s.likes - 1
+	WHERE ID(s) = {postID} AND ID(u) = {userID}
+	SET s.likes = s.likes - 1
 	DELETE l
 	RETURN s.likes AS likes
 	`
 	params := map[string]interface{}{
-		"postid": postID,
-		"userid": userID,
+		"postID": postID,
+		"userID": userID,
 	}
 	res := []struct {
 		Likes int `json:"likes"`
