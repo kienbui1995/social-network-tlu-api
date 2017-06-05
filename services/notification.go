@@ -48,12 +48,21 @@ func NewNotificationService() notificationService {
 func (service notificationService) GetAll(params helpers.ParamsGetAll, userID int64) ([]models.Notification, error) {
 	var stmt string
 	stmt = fmt.Sprintf(`
-				MATCH(u:User)-[h:HAS]->(n:Notification) WHERE ID(u) = {userID}
-				RETURN n{id:ID(n),.*} AS notification
+		MATCH(u:User)-[h:HAS]->(n:Notification) WHERE ID(u) = {userID}
+		RETURN
+			ID(n) AS id,
+			apoc.convert.getJsonProperty(n,"actor") AS actor,
+			CASE exists(n.last_comment) WHEN true THEN apoc.convert.getJsonProperty(n,"last_comment") END AS last_comment,
+			CASE exists(n.last_post) WHEN true THEN apoc.convert.getJsonProperty(n,"last_post") END AS last_post,
+			CASE exists(n.last_user) WHEN true THEN apoc.convert.getJsonProperty(n,"last_user") END AS last_user,
+						CASE exists(n.last_mention) WHEN true THEN apoc.convert.getJsonProperty(n,"last_mention") END AS last_mention,
+			n.updated_at AS updated_at,
+			n.action AS action,
+			n.total_action AS total_action
 				ORDER BY %s
 				SKIP {skip}
 				LIMIT {limit}
-				`, "notification."+params.Sort)
+				`, params.Sort)
 
 	paramsQuery := map[string]interface{}{
 		"userID": userID,
@@ -61,6 +70,7 @@ func (service notificationService) GetAll(params helpers.ParamsGetAll, userID in
 		"limit":  params.Limit,
 	}
 	res := []models.Notification{}
+
 	cq := neoism.CypherQuery{
 		Statement:  stmt,
 		Parameters: paramsQuery,
@@ -71,6 +81,7 @@ func (service notificationService) GetAll(params helpers.ParamsGetAll, userID in
 		return nil, err
 	}
 	if len(res) > 0 {
+		fmt.Printf("res: %v\n", res)
 		return res, nil
 	}
 	return nil, nil
@@ -346,18 +357,19 @@ func (service notificationService) UpdateLikeNotification(postID int64) (models.
 			WHERE TIMESTAMP() - l1.created_at < {limit_time}
 			WITH u,l,p,count(l1) AS like_count
 			MERGE (p)-[g:GENERATE]->(n:Notification{action:{action}})
-			ON CREATE SET g.created_at = TIMESTAMP(), n.total_action = like_count, n.actor = {last_actor},n.last_post = p{id:ID(p),message:p.message}
-			ON MATCH SET n.updated_at = l.created_at, n.total_action = like_count, n.actor = {last_actor},n.last_post = p{id:ID(p),message:p.message}
-			OPTIONAL MATCH (u1:User)[:FOLLOW]->(p)
+			ON CREATE SET g.created_at = TIMESTAMP(),n.actor =apoc.convert.toJson(u{id:ID(u),username:u.username,full_name:u.full_name,avatar:u.avatar}),n.last_post=apoc.convert.toJson(p{id:ID(p),message:p.message}), n.total_action = like_count,n.updated_at = l.created_at
+			ON MATCH SET n.actor =apoc.convert.toJson(u{id:ID(u),username:u.username,full_name:u.full_name,avatar:u.avatar}),n.last_post=apoc.convert.toJson(p{id:ID(p),message:p.message}), n.total_action = like_count,n.updated_at = l.created_at
+			WITH u,l,p,n
+			OPTIONAL MATCH (u1:User)-[:FOLLOW]->(p)
 			MERGE (n)<-[h:HAS]-(u1)
-			ON CREATE h.created_at = TIMESTAMP(), h.seen= 0
-			ON MATCH h.seen= 0
+			ON CREATE SET h.created_at = TIMESTAMP(), h.seen_at = 0
+			ON MATCH SET h.seen_at = 0
 			RETURN
 				ID(n) AS id,
-				n.actor AS actor,
+				apoc.convert.fromJsonMap(n.actor) AS actor,
 				n.action AS action,
 				n.total_action AS total_action,
-				n.last_post AS last_post,
+				apoc.convert.fromJsonMap(n.last_post) AS last_post,
 				"" AS title,
 				"" AS message,
 				n.updated_at AS updated_at,

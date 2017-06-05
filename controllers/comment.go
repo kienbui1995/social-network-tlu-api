@@ -125,17 +125,17 @@ func (controller CommentController) Create(c *gin.Context) {
 	if errCreate == nil && commentID >= 0 {
 		helpers.ResponseSuccessJSON(c, 1, "Create comment successful", map[string]interface{}{"id": commentID})
 
-		// push noti
-		go func() {
-			NotificationController := NotificationController{Service: services.NewNotificationService()}
-			NotificationController.Create(myUserID, int(configs.IActionComment), postID)
+		// // push noti
+		// go func() {
+		// 	NotificationController := NotificationController{Service: services.NewNotificationService()}
+		// 	NotificationController.Create(myUserID, int(configs.IActionComment), postID)
+		//
+		// }()
 
-		}()
-
-		// push noti when mention
-		go func() {
-
-		}()
+		// // push noti when mention
+		// go func() {
+		//
+		// }()
 		return
 	}
 	helpers.ResponseServerErrorJSON(c)

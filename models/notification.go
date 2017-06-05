@@ -3,8 +3,8 @@ package models
 // Notification struct
 type Notification struct {
 	ID          int64          `json:"id"`
-	Actor       *ActorObject   `json:"actor"`
-	Action      int            `json:"action"` //liked/commented/posted/mentioned/followed
+	Actor       *ActorObject   `json:"actor,omitempty"`
+	Action      int            `json:"action,omitempty"` //liked/commented/posted/mentioned/followed
 	TotalAction int            `json:"total_action,omitempty"`
 	LastPost    *PostObject    `json:"last_post,omitempty"`
 	LastComment *CommentObject `json:"last_comment,omitempty"`

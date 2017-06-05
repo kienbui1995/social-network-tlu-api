@@ -37,8 +37,7 @@ func (controller NotificationController) GetAll(c *gin.Context) {
 	// 	helpers.ResponseBadRequestJSON(c, configs.EcParam, "Invalid parameter: type")
 	// 	return
 	// }
-	params.Sort = c.DefaultQuery("sort", configs.SSort)
-	params.Sort, _ = helpers.ConvertSort(params.Sort)
+	params.Sort = c.DefaultQuery("sort", "updated_at DESC")
 	notifications, errGetAll := controller.Service.GetAll(params, myUserID)
 	if errGetAll != nil {
 		helpers.ResponseServerErrorJSON(c)

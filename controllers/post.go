@@ -293,7 +293,10 @@ func (controller PostController) CreateLike(c *gin.Context) {
 		// push noti
 		go func() {
 			Notification := NotificationController{Service: services.NewNotificationService()}
-			Notification.UpdateLikeNotification(postID, myUserID)
+			err := Notification.UpdateLikeNotification(postID, myUserID)
+			if err != nil {
+				fmt.Printf("UpdateLikeNotification: %s\n", err.Error())
+			}
 		}()
 		return
 	}

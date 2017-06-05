@@ -131,6 +131,9 @@ const (
 	IOneDay  = 86400000
 	ITwoDays = 172800000
 	IOneWeek = 604800000
+	SOneDay  = "86400000"
+	STwoDays = "172800000"
+	SOneWeek = "604800000"
 )
 
 // ErrorCode Table
