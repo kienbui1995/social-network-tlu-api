@@ -323,7 +323,7 @@ func (service notificationService) UpdateCommentNotification(postID int64) (mode
 			ORDER BY c.created_at DESC LIMIT 1
 			MATCH (u1:User)-[w]->(c1:Comment)-[a]->(p)
 			WHERE TIMESTAMP() - c1.created_at < {limit_time}
-			WITH c,p,u, count(c1) AS total_action
+			WITH c,p,u, count(u1) AS total_action
 			MERGE (p)-[g:GENERATE]->(n:Notification{action:{action}})
 			ON CREATE SET
 				g.created_at = TIMESTAMP(),
