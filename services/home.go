@@ -168,6 +168,7 @@ func (service homeService) GetNewsFeedWithPageRank(params helpers.ParamsGetAll, 
 	}) AS posts2, posts1
 	WITH  posts1+posts2 AS posts
 	UNWIND posts AS p
+	ORDER BY p.likes+p.comments+TIMESTAMP()-p.created_at DESC
 	return collect(p{
 		.*
 	} ) AS post

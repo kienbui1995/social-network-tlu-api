@@ -167,11 +167,14 @@ func (controller NotificationController) UpdateLikeNotification(postID int64, us
 	if errGetNotificationSubcriber1 != nil {
 		return errGetNotificationSubcriber1
 	}
+
 	errPushTest1 := controller.PushTest(notify1, userIDs1)
+
 	if errPushTest1 != nil {
 		return errPushTest1
 	}
 	notify2, errUpdateLikedPostNotification := controller.Service.UpdateLikedPostNotification(userID)
+	fmt.Printf("Pushnoti1:%s\n", errUpdateLikedPostNotification.Error())
 	if errUpdateLikedPostNotification != nil {
 		return errUpdateLikedPostNotification
 	}
@@ -179,6 +182,7 @@ func (controller NotificationController) UpdateLikeNotification(postID int64, us
 	if errGetNotificationSubcriber2 != nil {
 		return errGetNotificationSubcriber2
 	}
+	fmt.Printf("Pushnoti2:%s\n", errGetNotificationSubcriber2.Error())
 	errPushTest2 := controller.PushTest(notify2, userIDs2)
 	if errPushTest2 != nil {
 		return errPushTest2

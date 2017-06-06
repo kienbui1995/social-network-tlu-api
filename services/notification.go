@@ -51,11 +51,11 @@ func (service notificationService) GetAll(params helpers.ParamsGetAll, userID in
 		MATCH(u:User)-[h:HAS]->(n:Notification) WHERE ID(u) = {userID}
 		RETURN
 			ID(n) AS id,
-			apoc.convert.getJsonProperty(n,"actor") AS actor,
+			CASE exists(n.actor) WHEN true THEN apoc.convert.getJsonProperty(n,"actor") END AS actor,
 			CASE exists(n.last_comment) WHEN true THEN apoc.convert.getJsonProperty(n,"last_comment") END AS last_comment,
 			CASE exists(n.last_post) WHEN true THEN apoc.convert.getJsonProperty(n,"last_post") END AS last_post,
 			CASE exists(n.last_user) WHEN true THEN apoc.convert.getJsonProperty(n,"last_user") END AS last_user,
-						CASE exists(n.last_mention) WHEN true THEN apoc.convert.getJsonProperty(n,"last_mention") END AS last_mention,
+			CASE exists(n.last_mention) WHEN true THEN apoc.convert.getJsonProperty(n,"last_mention") END AS last_mention,
 			n.updated_at AS updated_at,
 			n.action AS action,
 			n.total_action AS total_action
@@ -269,13 +269,14 @@ func (service notificationService) UpdateFollowNotification(userID int64, object
 			MATCH ()
 			RETURN
 				ID(n) AS id,
-				n.last_actor AS actor,
-				n.action AS action,
-				n.comments AS total_action,
-				"" AS title,
-				"" AS message,
+				apoc.convert.getJsonProperty(n,"actor") AS actor,
+				CASE exists(n.last_comment) WHEN true THEN apoc.convert.getJsonProperty(n,"last_comment") END AS last_comment,
+				CASE exists(n.last_post) WHEN true THEN apoc.convert.getJsonProperty(n,"last_post") END AS last_post,
+				CASE exists(n.last_user) WHEN true THEN apoc.convert.getJsonProperty(n,"last_user") END AS last_user,
+				CASE exists(n.last_mention) WHEN true THEN apoc.convert.getJsonProperty(n,"last_mention") END AS last_mention,
 				n.updated_at AS updated_at,
-				n.created_at AS created_at
+				n.action AS action,
+				n.total_action AS total_action
 			`
 	params := map[string]interface{}{
 		"userID": userID,
@@ -357,8 +358,17 @@ func (service notificationService) UpdateLikeNotification(postID int64) (models.
 			WHERE TIMESTAMP() - l1.created_at < {limit_time}
 			WITH u,l,p,count(l1) AS like_count
 			MERGE (p)-[g:GENERATE]->(n:Notification{action:{action}})
-			ON CREATE SET g.created_at = TIMESTAMP(),n.actor =apoc.convert.toJson(u{id:ID(u),username:u.username,full_name:u.full_name,avatar:u.avatar}),n.last_post=apoc.convert.toJson(p{id:ID(p),message:p.message}), n.total_action = like_count,n.updated_at = l.created_at
-			ON MATCH SET n.actor =apoc.convert.toJson(u{id:ID(u),username:u.username,full_name:u.full_name,avatar:u.avatar}),n.last_post=apoc.convert.toJson(p{id:ID(p),message:p.message}), n.total_action = like_count,n.updated_at = l.created_at
+			ON CREATE SET
+				g.created_at = TIMESTAMP(),
+				n.actor =apoc.convert.toJson(u{id:ID(u),username:u.username,full_name:u.full_name,avatar:u.avatar}),
+				n.last_post=apoc.convert.toJson(p{id:ID(p),message:p.message}),
+				n.total_action = like_count,
+				n.updated_at = l.created_at
+			ON MATCH SET
+			n.actor =apoc.convert.toJson(u{id:ID(u),username:u.username,full_name:u.full_name,avatar:u.avatar}),
+			n.last_post=apoc.convert.toJson(p{id:ID(p),message:p.message}),
+			n.total_action = like_count,
+			n.updated_at = l.created_at
 			WITH u,l,p,n
 			OPTIONAL MATCH (u1:User)-[:FOLLOW]->(p)
 			MERGE (n)<-[h:HAS]-(u1)
@@ -526,7 +536,7 @@ func (service notificationService) UpdateLikedPostNotification(userID int64) (mo
 			`
 	params := map[string]interface{}{
 		"userID":     userID,
-		"time_limit": configs.ITwoDays,
+		"limit_time": configs.ITwoDays,
 		"action":     configs.IActionLikedPost,
 	}
 	res := []models.Notification{}

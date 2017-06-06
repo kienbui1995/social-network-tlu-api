@@ -69,8 +69,8 @@ type ChannelObject struct {
 
 // ActorObject struct
 type ActorObject struct {
-	*UserObject    `json:",omitempty"`
-	*ChannelObject `json:",omitempty"`
+	*UserObject `json:",omitempty"`
+	// *ChannelObject `json:",omitempty"`
 }
 
 // IsEmpty func
