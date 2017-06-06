@@ -64,7 +64,10 @@ func (controller SubscriptionController) CreateSubscription(c *gin.Context) {
 	// push noti
 	go func() {
 		Notification := NotificationController{Service: services.NewNotificationService()}
-		Notification.Create(fromID, int(configs.IActionFollow), toID)
+		err := Notification.UpdateFollowNotification(fromID, toID)
+		if err != nil {
+			fmt.Printf("UpdateFollowNotification: %s\n", err.Error())
+		}
 	}()
 }
 

@@ -252,36 +252,51 @@ func (service notificationService) SeenNotification(notificationID int64, userID
 	return true, nil
 }
 
-//
+// UpdateFollowNotification func
+// int64 int64
+// int64 error
 func (service notificationService) UpdateFollowNotification(userID int64, objectID int64) (models.Notification, error) {
 	stmt := `
-			MATCH(u1:User)
-			WHERE ID(u1) = {userID}
-			MATCH(u1)-[f1:FOLLOW]->(u11:User)
-			WITH f1, u11,u1
-			ORDER BY f1.created_at DESC LIMIT 1
-			MERGE (u1)-[g:GENERATE]->(n:Notification{action:{action}})
-			SET
-			n.actor = u1{id:ID(u1),username:u1.username,full_name:u1.full_name,avatar:u1.avatar},
-			n.total_action = u1.followings,
-			n.last_user= u11{id:ID(u11),username: u11.username, full_name: u11.full_name, avatar: u11.avatar},
-			n.updated_at = TIMESTAMP()
-			MATCH ()
+			MATCH(u:User)
+			WHERE ID(u) = {userID}
+			MATCH(u)-[f:FOLLOW]->(u1:User)
+			WITH u,f,u1
+			ORDER BY f.created_at DESC LIMIT 1
+			MATCH(u)-[f_count:FOLLOW]->(u_count:User)
+			WHERE TIMESTAMP() - f_count.created_at < {limit_time}
+			WITH u,f,u1,count(f_count) AS total_action
+			MERGE (u)-[g:GENERATE]->(n:Notification{action:{action}})
+			ON CREATE SET
+				g.created_at = TIMESTAMP(),
+				n.updated_at = f.created_at,
+				n.actor = apoc.convert.toJson(u{id:ID(u),username:u.username,full_name:u.full_name,avatar:u.avatar}),
+				n.total_action = total_action,
+				n.last_user= apoc.convert.toJson(u1{id:ID(u1),username: u1.username, full_name: u1.full_name, avatar: u1.avatar})
+			ON MATCH SET
+				n.updated_at = f.created_at,
+				n.actor = apoc.convert.toJson(u{id:ID(u),username:u.username,full_name:u.full_name,avatar:u.avatar}),
+				n.total_action = total_action,
+				n.last_user= apoc.convert.toJson(u1{id:ID(u1),username: u1.username, full_name: u1.full_name, avatar: u1.avatar})
+			WITH u,n
+			OPTIONAL MATCH (u1:User)-[:FOLLOW]->(u)
+			MERGE (n)<-[h:HAS]-(u1)
+			ON CREATE SET h.created_at = TIMESTAMP(), h.seen_at = 0
+			ON MATCH SET h.seen_at = 0
 			RETURN
 				ID(n) AS id,
-				apoc.convert.getJsonProperty(n,"actor") AS actor,
-				CASE exists(n.last_comment) WHEN true THEN apoc.convert.getJsonProperty(n,"last_comment") END AS last_comment,
-				CASE exists(n.last_post) WHEN true THEN apoc.convert.getJsonProperty(n,"last_post") END AS last_post,
-				CASE exists(n.last_user) WHEN true THEN apoc.convert.getJsonProperty(n,"last_user") END AS last_user,
-				CASE exists(n.last_mention) WHEN true THEN apoc.convert.getJsonProperty(n,"last_mention") END AS last_mention,
+				apoc.convert.fromJsonMap(n.actor) AS actor,
+				CASE exists(n.last_comment) WHEN true THEN apoc.convert.fromJsonMap(n.last_comment) END AS last_comment,
+				CASE exists(n.last_post) WHEN true THEN apoc.convert.fromJsonMap(n.last_post) END AS last_post,
+				CASE exists(n.last_user) WHEN true THEN apoc.convert.fromJsonMap(n.last_user) END AS last_user,
+				CASE exists(n.last_mention) WHEN true THEN apoc.convert.fromJsonMap(n.last_mention) END AS last_mention,
 				n.updated_at AS updated_at,
 				n.action AS action,
 				n.total_action AS total_action
 			`
 	params := map[string]interface{}{
-		"userID": userID,
-
-		"action": configs.IActionFollow,
+		"userID":     userID,
+		"limit_time": configs.ITwoDays,
+		"action":     configs.IActionFollow,
 	}
 	res := []models.Notification{}
 	cq := neoism.CypherQuery{
