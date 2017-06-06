@@ -165,10 +165,10 @@ func (service homeService) GetNewsFeedWithPageRank(params helpers.ParamsGetAll, 
 	is_following: exists((me)-[:FOLLOW]->(p)),
 	can_edit: CASE WHEN ID(u) = ID(me) THEN true ELSE false END,
 	can_delete:	CASE WHEN ID(u) = ID(me) THEN true ELSE false END
-	}) AS posts2, posts1
-	WITH  posts1+posts2 AS posts
+	}) AS posts2, posts1, me
+	WITH  posts1+posts2 AS posts,me
 	UNWIND posts AS p
-	ORDER BY p.likes+p.comments+TIMESTAMP()-p.created_at DESC
+	WITH p,(p.likes+p.comments+length((me)-[*1..3]->(:User{username:p.owner.username})))*100*toFloat(TIMESTAMP()-p.created_at)/TIMESTAMP() AS a_score ORDER BY a_score DESC
 	return collect(p{
 		.*
 	} ) AS post
