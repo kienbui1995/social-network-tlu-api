@@ -3,9 +3,9 @@ package models
 // UserObject struct
 type UserObject struct {
 	ID       int64  `json:"id"`
-	Username string `json:"username"`
-	FullName string `json:"full_name"`
-	Avatar   string `json:"avatar"`
+	Username string `json:"username,omitempty"`
+	FullName string `json:"full_name,omitempty"`
+	Avatar   string `json:"avatar,omitempty"`
 }
 
 //UserFollowObject struct for a sub user for get all user; search user, list user any where
