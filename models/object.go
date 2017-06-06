@@ -46,10 +46,11 @@ func (object PlaceObject) IsEmpty() bool {
 
 // PostObject struct
 type PostObject struct {
-	ID      int64       `json:"id"`
-	Message string      `json:"message"`
-	Photo   string      `json:"photo,omitempty"`
-	Owner   *UserObject `json:"owner,omitempty"`
+	ID      int64        `json:"id"`
+	Message string       `json:"message"`
+	Photo   string       `json:"photo,omitempty"`
+	Owner   *UserObject  `json:"owner,omitempty"`
+	Place   *GroupObject `json:"place,omitempty"`
 }
 
 // CommentObject struct

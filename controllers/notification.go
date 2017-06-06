@@ -208,18 +208,20 @@ func (controller NotificationController) UpdateCommentNotification(postID int64,
 	if errPushTest1 != nil {
 		return errPushTest1
 	}
-	notify2, errUpdateCommentedPostNotification := controller.Service.UpdateCommentedPostNotification(userID)
+	_, errUpdateCommentedPostNotification := controller.Service.UpdateCommentedPostNotification(userID)
 	if errUpdateCommentedPostNotification != nil {
 		return errUpdateCommentedPostNotification
 	}
-	userIDs2, errGetNotificationSubcriber2 := controller.Service.GetNotificationSubcriber(notify2.ID)
-	if errGetNotificationSubcriber2 != nil {
-		return errGetNotificationSubcriber2
-	}
-	errPushTest2 := controller.PushTest(notify2, userIDs2)
-	if errPushTest2 != nil {
-		return errPushTest2
-	}
+	// Only creeate new noti, no push notification on device
+
+	// userIDs2, errGetNotificationSubcriber2 := controller.Service.GetNotificationSubcriber(notify2.ID)
+	// if errGetNotificationSubcriber2 != nil {
+	// 	return errGetNotificationSubcriber2
+	// }
+	// errPushTest2 := controller.PushTest(notify2, userIDs2)
+	// if errPushTest2 != nil {
+	// 	return errPushTest2
+	// }
 	return nil
 }
 
