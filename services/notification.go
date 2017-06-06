@@ -322,7 +322,8 @@ func (service notificationService) UpdateCommentNotification(postID int64) (mode
 				n.total_action = total_action,
 				n.last_comment = apoc.convert.toJson(c{id:ID(c),message: c.message}),
 				n.last_actor = apoc.convert.toJson(u{id:ID(u),username:u.username,full_name:u.full_name,avatar:u.avatar}),
-				n.last_post= apoc.convert.toJson(p{id:ID(p), message:p.message})
+				n.last_post= apoc.convert.toJson(p{id:ID(p),message:p.message})
+			WITH u,p,n
 			OPTIONAL MATCH (u1:User)-[:FOLLOW]->(p)
 			MERGE (n)<-[h:HAS]-(u1)
 			ON CREATE SET h.created_at = TIMESTAMP(), h.seen_at = 0
@@ -597,15 +598,26 @@ func (service notificationService) UpdateCommentedPostNotification(userID int64)
 			WHERE TIMESTAMP() - c1.created_at < {limit_time} AND p1.privacy=1 AND exists((p1)<-[:HAS]-(:Group))=false
 			WITH p,c,u,count(c1) AS total_action
 			MERGE (u)-[g:GENERATE]->(n:Notification{action:{action}})
-			ON CREATE SET g.created_at = TIMESTAMP(),n.updated_at = c.created_at,n.last_post = p{id:ID(p),message:p.message},n.total_action=total_action,n.actor=u{id:ID(u),username:u.username,full_name:u.full_name,avatar:u.avatar},n.last_comment = c{id:ID(c),message:c.message}
-			ON MATCH SET n.updated_at = c.created_at,n.last_post = p{id:ID(p),message:p.message},n.total_action=total_action,n.actor=n.actor= u{id:ID(u),username:u.username,full_name:u.full_name,avatar:u.avatar},n.last_comment = c{id:ID(c),message:c.message}
+			ON CREATE SET
+				g.created_at = TIMESTAMP(),
+				n.updated_at = c.created_at,
+				n.last_post = apoc.convert.toJson(p{id:ID(p),message:p.message}),
+				n.total_action=total_action,
+				n.actor=apoc.convert.toJson(u{id:ID(u),username:u.username,full_name:u.full_name,avatar:u.avatar}),
+				n.last_comment = apoc.convert.toJson(c{id:ID(c),message:c.message})
+			ON MATCH SET
+				n.updated_at = c.created_at,
+				n.last_post = apoc.convert.toJson(p{id:ID(p),message:p.message}),
+				n.total_action=total_action,
+				n.actor=apoc.convert.toJson(u{id:ID(u),username:u.username,full_name:u.full_name,avatar:u.avatar}),
+				n.last_comment = apoc.convert.toJson(c{id:ID(c),message:c.message})
 			RETURN
 				ID(n) AS id,
-				n.actor AS actor,
+				apoc.convert.fromJsonMap(n.actor) AS actor,
 				n.action AS action,
 				n.total_action AS total_action,
-				n.last_post AS last_post,
-				n.last_comment,
+				apoc.convert.fromJsonMap(n.last_post) AS last_post,
+				apoc.convert.fromJsonMap(n.last_comment) AS last_comment,
 				"" AS title,
 				"" AS message,
 				n.updated_at AS updated_at,
@@ -613,7 +625,7 @@ func (service notificationService) UpdateCommentedPostNotification(userID int64)
 			`
 	params := map[string]interface{}{
 		"userID":     userID,
-		"time_limit": configs.ITwoDays,
+		"limit_time": configs.ITwoDays,
 		"action":     configs.IActionCommentedPost,
 	}
 	res := []models.Notification{}

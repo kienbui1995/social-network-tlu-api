@@ -198,6 +198,7 @@ func (controller NotificationController) UpdateLikeNotification(postID int64, us
 func (controller NotificationController) UpdateCommentNotification(postID int64, userID int64, commentID int64) error {
 	notify1, errUpdateCommentNotification := controller.Service.UpdateCommentNotification(postID)
 	if errUpdateCommentNotification != nil {
+		fmt.Printf("errUpdateCommentNotification: %s\n", errUpdateCommentNotification.Error())
 		return errUpdateCommentNotification
 	}
 	userIDs1, errGetNotificationSubcriber1 := controller.Service.GetNotificationSubcriber(notify1.ID)
@@ -210,6 +211,7 @@ func (controller NotificationController) UpdateCommentNotification(postID int64,
 	}
 	_, errUpdateCommentedPostNotification := controller.Service.UpdateCommentedPostNotification(userID)
 	if errUpdateCommentedPostNotification != nil {
+		fmt.Printf("errUpdateCommentedPostNotification: %s\n", errUpdateCommentedPostNotification.Error())
 		return errUpdateCommentedPostNotification
 	}
 	// Only creeate new noti, no push notification on device
