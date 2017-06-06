@@ -533,7 +533,7 @@ func (service notificationService) UpdateLikedPostNotification(userID int64) (mo
 				n.total_action = like_count,
 				n.updated_at = l.created_at
 				WITH u,l,p,n
-				OPTIONAL MATCH (u1:User)-[:FOLLOW]->(p)
+				OPTIONAL MATCH (u1:User)-[:FOLLOW]->(u)
 				MERGE (n)<-[h:HAS]-(u1)
 				ON CREATE SET h.created_at = TIMESTAMP(), h.seen_at = 0
 				ON MATCH SET h.seen_at = 0

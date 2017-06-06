@@ -174,8 +174,9 @@ func (controller NotificationController) UpdateLikeNotification(postID int64, us
 		return errPushTest1
 	}
 	_, errUpdateLikedPostNotification := controller.Service.UpdateLikedPostNotification(userID)
-	fmt.Printf("Pushnoti1:%s\n", errUpdateLikedPostNotification.Error())
+
 	if errUpdateLikedPostNotification != nil {
+		fmt.Printf("Pushnoti1:%s\n", errUpdateLikedPostNotification.Error())
 		return errUpdateLikedPostNotification
 	}
 
