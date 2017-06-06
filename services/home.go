@@ -168,7 +168,7 @@ func (service homeService) GetNewsFeedWithPageRank(params helpers.ParamsGetAll, 
 	}) AS posts2, posts1, me
 	WITH  posts1+posts2 AS posts,me
 	UNWIND posts AS p
-	WITH p,(p.likes+p.comments+length((me)-[*1..3]->(:User{username:p.owner.username})))*100*toFloat(TIMESTAMP()-p.created_at)/TIMESTAMP() AS a_score ORDER BY a_score DESC
+	WITH p,(p.likes+p.comments)*100*toFloat(TIMESTAMP()-p.created_at)/TIMESTAMP() AS a_score ORDER BY a_score DESC
 	return collect(p{
 		.*
 	} ) AS post
