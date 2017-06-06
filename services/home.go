@@ -64,7 +64,7 @@ func (service homeService) FindUserByUsernameAndFullName(name string, myUserID i
 // []models.Post error
 func (service homeService) GetNewsFeed(params helpers.ParamsGetAll, myUserID int64) ([]models.Post, error) {
 	stmt := fmt.Sprintf(`
-		MATCH (u:User)-[:POST]->(p:Post)<-[:HAS]-(g:Group)<-[j:JOIN{status:1}]-(me:User)
+		OPTIONAL MATCH (u:User)-[:POST]->(p:Post)<-[:HAS]-(g:Group)<-[j:JOIN{status:1}]-(me:User)
 		WHERE ID(me) = {myUserID} AND 3>=j.role>=1
 		WITH
 		collect(
@@ -79,10 +79,10 @@ func (service homeService) GetNewsFeed(params helpers.ParamsGetAll, myUserID int
 		is_following: exists((me)-[:FOLLOW]->(p)),
 		can_edit: CASE WHEN ID(u) = ID(me) THEN true ELSE false END,
 		can_delete: CASE WHEN ID(u) = ID(me) OR exists((me)-[:JOIN{role:2}]->(g))OR exists((me)-[:JOIN{role:3}]->(g)) THEN true ELSE false END
-		}) AS posts1, me
+		}) AS posts1
 
-		MATCH(me)-[:FOLLOW]->(u:User)-[:POST]->(p:Post)
-		WHERE (p.privacy = 1 OR (p.privacy = 2 AND exists((me)-[:FOLLOW]->(u))) OR u = me) AND exists((:Group)-[:HAS]->(p))=false
+		OPTIONAL MATCH(me:User)-[:FOLLOW]->(u:User)-[:POST]->(p:Post)
+		WHERE (p.privacy = 1 OR (p.privacy = 2 AND exists((me)-[:FOLLOW]->(u))) OR u = me) AND exists((:Group)-[:HAS]->(p))=false AND ID(me)= {myUserID}
 		WITH
 		collect(
 		p{
@@ -135,7 +135,7 @@ func (service homeService) GetNewsFeed(params helpers.ParamsGetAll, myUserID int
 // []models.Post error
 func (service homeService) GetNewsFeedWithPageRank(params helpers.ParamsGetAll, myUserID int64) ([]models.Post, error) {
 	stmt := `
-	MATCH (u:User)-[:POST]->(p:Post)<-[:HAS]-(g:Group)<-[j:JOIN{status:1}]-(me:User)
+	OPTIONAL MATCH (u:User)-[:POST]->(p:Post)<-[:HAS]-(g:Group)<-[j:JOIN{status:1}]-(me:User)
 	WHERE ID(me) = {myUserID} AND 3>=j.role>=1
 	WITH
 	collect(
@@ -150,10 +150,10 @@ func (service homeService) GetNewsFeedWithPageRank(params helpers.ParamsGetAll, 
 	is_following: exists((me)-[:FOLLOW]->(p)),
 	can_edit: CASE WHEN ID(u) = ID(me) THEN true ELSE false END,
 	can_delete: CASE WHEN ID(u) = ID(me) OR exists((me)-[:JOIN{role:2}]->(g))OR exists((me)-[:JOIN{role:3}]->(g)) THEN true ELSE false END
-	}) AS posts1, me
+	}) AS posts1
 
-	MATCH(me)-[:FOLLOW]->(u:User)-[:POST]->(p:Post)
-	WHERE (p.privacy = 1 OR (p.privacy = 2 AND exists((me)-[:FOLLOW]->(u))) OR u = me) AND exists((:Group)-[:HAS]->(p))=false
+	OPTIONAL MATCH(me:User)-[:FOLLOW]->(u:User)-[:POST]->(p:Post)
+	WHERE (p.privacy = 1 OR (p.privacy = 2 AND exists((me)-[:FOLLOW]->(u))) OR u = me) AND exists((:Group)-[:HAS]->(p))=false AND ID(me) ={myUserID}
 	WITH
 	collect(
 	p{

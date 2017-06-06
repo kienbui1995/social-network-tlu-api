@@ -173,20 +173,23 @@ func (controller NotificationController) UpdateLikeNotification(postID int64, us
 	if errPushTest1 != nil {
 		return errPushTest1
 	}
-	notify2, errUpdateLikedPostNotification := controller.Service.UpdateLikedPostNotification(userID)
+	_, errUpdateLikedPostNotification := controller.Service.UpdateLikedPostNotification(userID)
 	fmt.Printf("Pushnoti1:%s\n", errUpdateLikedPostNotification.Error())
 	if errUpdateLikedPostNotification != nil {
 		return errUpdateLikedPostNotification
 	}
-	userIDs2, errGetNotificationSubcriber2 := controller.Service.GetNotificationSubcriber(notify2.ID)
-	if errGetNotificationSubcriber2 != nil {
-		return errGetNotificationSubcriber2
-	}
-	fmt.Printf("Pushnoti2:%s\n", errGetNotificationSubcriber2.Error())
-	errPushTest2 := controller.PushTest(notify2, userIDs2)
-	if errPushTest2 != nil {
-		return errPushTest2
-	}
+
+	// Only creeate new noti, no push notification on device
+
+	// userIDs2, errGetNotificationSubcriber2 := controller.Service.GetNotificationSubcriber(notify2.ID)
+	// if errGetNotificationSubcriber2 != nil {
+	// 	return errGetNotificationSubcriber2
+	// }
+	// fmt.Printf("Pushnoti2:%s\n", errGetNotificationSubcriber2.Error())
+	// errPushTest2 := controller.PushTest(notify2, userIDs2)
+	// if errPushTest2 != nil {
+	// 	return errPushTest2
+	// }
 	return nil
 }
 

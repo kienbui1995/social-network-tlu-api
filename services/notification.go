@@ -513,26 +513,40 @@ func (service notificationService) UpdateMentionNotification(postID int64, userI
 // models.Notification error
 func (service notificationService) UpdateLikedPostNotification(userID int64) (models.Notification, error) {
 	stmt := `
-			MATCH(p:Post)<-[l:LIKE]-(u:User)
-			WHERE ID(u) = {userID} AND p.privacy=1
-			WITH p,l,u
-			ORDER BY l.created_at DESC LIMIT 1
-			MATCH(p1:Post)<-[l1:LIKE]-(u)
-			WHERE TIMESTAMP() - l1.created_at < {limit_time} AND exists((p1)<-[:HAS]-(:Group))=false AND p1.privacy <>3
-			WITH p,l,u,count(l1) AS total_action
-			MERGE (u)-[g:GENERATE]->(n:Notification{action:{action}})
-			ON CREATE SET g.created_at = TIMESTAMP(),n.updated_at = l.created_at,n.last_post = p{id:ID(p),message:p.message},n.total_action=total_action,n.actor=u{id:ID(u),username:u.username,full_name:u.full_name,avatar:u.avatar}
-			ON MATCH SET n.updated_at = l.created_at,n.last_post = p{id:ID(p),message:p.message},n.total_action=total_action,n.actor=n.actor= u{id:ID(u),username:u.username,full_name:u.full_name,avatar:u.avatar}
-			RETURN
-				ID(n) AS id,
-				n.actor AS actor,
-				n.action AS action,
-				n.total_action AS total_action,
-				n.last_post AS last_post,
-				"" AS title,
-				"" AS message,
-				n.updated_at AS updated_at,
-				n.created_at AS created_at
+				MATCH(u:User)-[l:LIKE]->(p:Post)
+				WHERE ID(p) = {userID} AND p.privacy=1
+				WITH u,l,p
+				ORDER BY l.created_at DESC LIMIT 1
+				MATCH(u)-[l1:LIKE]->(p1:Post)
+				WHERE TIMESTAMP() - l1.created_at < {limit_time} AND exists((p1)<-[:HAS]-(:Group))=false AND p1.privacy <>3
+				WITH u,l,p,count(l1) AS like_count
+				MERGE (u)-[g:GENERATE]->(n:Notification{action:{action}})
+				ON CREATE SET
+					g.created_at = TIMESTAMP(),
+					n.actor =apoc.convert.toJson(u{id:ID(u),username:u.username,full_name:u.full_name,avatar:u.avatar}),
+					n.last_post=apoc.convert.toJson(p{id:ID(p),message:p.message}),
+					n.total_action = like_count,
+					n.updated_at = l.created_at
+				ON MATCH SET
+				n.actor =apoc.convert.toJson(u{id:ID(u),username:u.username,full_name:u.full_name,avatar:u.avatar}),
+				n.last_post=apoc.convert.toJson(p{id:ID(p),message:p.message}),
+				n.total_action = like_count,
+				n.updated_at = l.created_at
+				WITH u,l,p,n
+				OPTIONAL MATCH (u1:User)-[:FOLLOW]->(p)
+				MERGE (n)<-[h:HAS]-(u1)
+				ON CREATE SET h.created_at = TIMESTAMP(), h.seen_at = 0
+				ON MATCH SET h.seen_at = 0
+				RETURN
+					ID(n) AS id,
+					apoc.convert.fromJsonMap(n.actor) AS actor,
+					n.action AS action,
+					n.total_action AS total_action,
+					apoc.convert.fromJsonMap(n.last_post) AS last_post,
+					"" AS title,
+					"" AS message,
+					n.updated_at AS updated_at,
+					n.created_at AS created_at
 			`
 	params := map[string]interface{}{
 		"userID":     userID,
