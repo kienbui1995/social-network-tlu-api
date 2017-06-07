@@ -47,6 +47,37 @@ func (controller NotificationController) GetAll(c *gin.Context) {
 	helpers.ResponseEntityListJSON(c, 1, "Get notifications successful", notifications, params, len(notifications))
 }
 
+// UpdateSeenNotification func
+func (controller NotificationController) UpdateSeenNotification(c *gin.Context) {
+	notificationID, errParseInt := strconv.ParseInt(c.Param("id"), 10, 64)
+	if errParseInt != nil {
+		helpers.ResponseBadRequestJSON(c, configs.EcParam, "Invalid notification id")
+		return
+	}
+
+	//check permisson
+	myUserID, errGetUserIDFromToken := GetUserIDFromToken(c.Request.Header.Get("token"))
+	if errGetUserIDFromToken != nil {
+		helpers.ResponseAuthJSON(c, 200, "Permissions error")
+		return
+	}
+
+	if seen, _ := controller.Service.CheckSeenNotification(notificationID, myUserID); seen == true {
+		helpers.ResponseBadRequestJSON(c, configs.EcParam, "Invalid notification id")
+		return
+	}
+	seen, errSeenNotification := controller.Service.SeenNotification(notificationID, myUserID)
+	if errSeenNotification != nil {
+		helpers.ResponseServerErrorJSON(c)
+		fmt.Printf("SeenNotification service: %s\n", errSeenNotification.Error())
+	}
+	if seen == true {
+		helpers.ResponseJSON(c, 200, 1, "Seen notification successful", nil)
+		return
+	}
+
+}
+
 // Create func
 func (controller NotificationController) Create(actorID int64, action int, objectID int64) (bool, error) {
 	// if action == configs.IActionLike {
@@ -154,8 +185,6 @@ func (controller NotificationController) Create(actorID int64, action int, objec
 	// }
 	return true, nil
 }
-
-// UPDATE
 
 // UpdateLikeNotification func
 func (controller NotificationController) UpdateLikeNotification(postID int64, userID int64) error {

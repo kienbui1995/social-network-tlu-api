@@ -13,7 +13,7 @@ func AddRoutesNotifications(r *gin.RouterGroup) {
 	{
 		routes.GET("", controller.GetAll) // get all noti of me
 		// routes.GET("/:id", controller)    // get a noti of me
-		// routes.PUT("/:id", controlle)     // update Seen Notification
+		routes.PUT("/:id", controller.UpdateSeenNotification) // update Seen Notification
 	}
 
 }
