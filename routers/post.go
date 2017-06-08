@@ -26,7 +26,7 @@ func AddRoutesPosts(r *gin.RouterGroup) {
 		routes.POST("/:id/reports", controller.CreateReport)
 		routes.DELETE("/:id/reports", controller.DeleteReport)
 
-		routes.GET("/:id/users", controller.GetUsers)
+		routes.GET("/:id/users", controller.GetUsers) // get users who can_mentioned/mentioned or liked/commented post
 
 	}
 	// post with user

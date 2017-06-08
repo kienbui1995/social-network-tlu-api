@@ -789,26 +789,27 @@ func (service postService) GetUsers(postID int64, params helpers.ParamsGetAll, m
 // []models.UserFollowObject error
 func (service postService) GetCanMentionedUsers(postID int64, params helpers.ParamsGetAll, myUserID int64) ([]models.UserFollowObject, error) {
 	stmt := fmt.Sprintf(`
-	MATCH (me:User)-[f:FOLLOW]-(u:User)
+	OPTIONAL MATCH (me:User)-[f:FOLLOW]-(u:User)
  	WHERE id(me) = {myUserID}
  	WITH ID(u) AS id,me
- 	MATCH (u1:User)-[l:LIKE|:FOLLOW|:POST]->(p:Post) ,(u2)-[cr:WRITE]->(c:Comment)-[:AT]->(p)
- 	WHERE ID(p)= {posID} and u2<>u1
- 	WITH  collect(id)+collect(id(u1))+ collect(id(u2)) AS users, me
+ 	OPTIONAL MATCH (u1:User)-[l:LIKE|:FOLLOW|:POST]->(p:Post) ,(u2)-[cr:WRITE]->(c:Comment)-[:AT]->(p)
+ 	WHERE ID(p)= {postID} and u2<>u1 AND me<>u1 AND me<>u2
+ 	WITH  collect(id)+collect(id(u1))+ collect(id(u2)) AS users, me,p
  	UNWIND users AS x
- 	WITH DISTINCT x, me
+ 	WITH DISTINCT x, me,p
+	OPTIONAL MATCH (p)<-[:HAS]-(g:Group)
+	WITH x, me,p,g
  	MATCH (mention:User)
- 	WHERE CASE exists((p)<-[:HAS]-(g:Group)) WHEN true THEN exists((mention)-[:JOIN]->(g)) ELSE ID(mention) = x END
+ 	WHERE CASE exists((p)<-[:HAS]-(g)) WHEN true THEN exists((mention)-[:JOIN{status:1}]->(g)) ELSE ID(mention) = x END
  	WITH
- 		mention{id:ID(mention),.username, .avatar, .full_name, is_followed: exists((me)-[:FOLLOW]->(mention)) } AS user,
-    mention.created_at AS created_at, mention.username AS username, mention.full_name AS full_name, ID(mention) AS id
+ 		mention{id:ID(mention),.username, .avatar, .full_name, is_followed: exists((me)-[:FOLLOW]->(mention)) } AS user
  	ORDER BY %s
  	SKIP {skip}
   LIMIT {limit}
  	RETURN  collect(user) AS users
 
 		`,
-		params.Sort)
+		"user."+params.Sort)
 	p := map[string]interface{}{
 		"postID":   postID,
 		"myUserID": myUserID,

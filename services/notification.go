@@ -349,13 +349,13 @@ func (service notificationService) UpdateFollowNotification(userID int64, object
 //
 func (service notificationService) UpdateCommentNotification(postID int64) (models.Notification, error) {
 	stmt := `
-			MATCH (u:User)-[w]->(c:Comment)-[a]->(p:Post)
+			MATCH (u:User)-[w]->(c:Comment)-[a]->(p:Post)<-[:POST]-(owner:User)
 			WHERE ID(p) = {postID}
-			WITH c,p,u
+			WITH c,p,u,owner
 			ORDER BY c.created_at DESC LIMIT 1
 			MATCH (u1:User)-[w]->(c1:Comment)-[a]->(p)
 			WHERE TIMESTAMP() - c1.created_at < {limit_time}
-			WITH c,p,u, count(u1) AS total_action
+			WITH c,p,u, count(u1) AS total_action,owner
 			MERGE (p)-[g:GENERATE]->(n:Notification{action:{action}})
 			ON CREATE SET
 				g.created_at = TIMESTAMP(),
@@ -363,13 +363,13 @@ func (service notificationService) UpdateCommentNotification(postID int64) (mode
 				n.total_action = total_action,
 				n.last_comment = apoc.convert.toJson(c{id:ID(c),message: c.message}),
 				n.actor = apoc.convert.toJson(u{id:ID(u),username:u.username,full_name:u.full_name,avatar:u.avatar}),
-				n.last_post= apoc.convert.toJson(p{id:ID(p), message:p.message,photo:p.photo})
+				n.last_post= apoc.convert.toJson(p{id:ID(p), message:p.message,photo:p.photo,owner:owner{id:ID(owner),username:owner.username,full_name:owner.full_name,avatar:owner.avatar}})
 			ON MATCH SET
 				n.updated_at = c.created_at,
 				n.total_action = total_action,
 				n.last_comment = apoc.convert.toJson(c{id:ID(c),message: c.message}),
 				n.last_actor = apoc.convert.toJson(u{id:ID(u),username:u.username,full_name:u.full_name,avatar:u.avatar}),
-				n.last_post= apoc.convert.toJson(p{id:ID(p),message:p.message,photo:p.photo})
+				n.last_post= apoc.convert.toJson(p{id:ID(p),message:p.message,photo:p.photo,owner:owner{id:ID(owner),username:owner.username,full_name:owner.full_name,avatar:owner.avatar}})
 			WITH u,p,n
 			OPTIONAL MATCH (u1:User)-[:FOLLOW]->(p)
 			MERGE (n)<-[h:HAS]-(u1)
@@ -413,23 +413,23 @@ func (service notificationService) UpdateCommentNotification(postID int64) (mode
 // models.Notification error
 func (service notificationService) UpdateLikeNotification(postID int64) (models.Notification, error) {
 	stmt := `
-			MATCH(u:User)-[l:LIKE]->(p:Post)
+			MATCH(u:User)-[l:LIKE]->(p:Post)<-[r:POST]-(owner:User)
 			WHERE ID(p) = {postID}
-			WITH u,l,p
+			WITH u,l,p,owner
 			ORDER BY l.created_at DESC LIMIT 1
 			MATCH(:User)-[l1:LIKE]->(p)
 			WHERE TIMESTAMP() - l1.created_at < {limit_time}
-			WITH u,l,p,count(l1) AS like_count
+			WITH u,l,p,count(l1) AS like_count,owner
 			MERGE (p)-[g:GENERATE]->(n:Notification{action:{action}})
 			ON CREATE SET
 				g.created_at = TIMESTAMP(),
 				n.actor =apoc.convert.toJson(u{id:ID(u),username:u.username,full_name:u.full_name,avatar:u.avatar}),
-				n.last_post=apoc.convert.toJson(p{id:ID(p),message:p.message,photo:p.photo}),
+				n.last_post=apoc.convert.toJson(p{id:ID(p),message:p.message,photo:p.photo,owner:owner{id:ID(owner),username:owner.username,full_name:owner.full_name,avatar:owner.avatar}}),
 				n.total_action = like_count,
 				n.updated_at = l.created_at
 			ON MATCH SET
 			n.actor =apoc.convert.toJson(u{id:ID(u),username:u.username,full_name:u.full_name,avatar:u.avatar}),
-			n.last_post=apoc.convert.toJson(p{id:ID(p),message:p.message,photo:p.photo}),
+			n.last_post=apoc.convert.toJson(p{id:ID(p),message:p.message,photo:p.photo,owner:owner{id:ID(owner),username:owner.username,full_name:owner.full_name,avatar:owner.avatar}}),
 			n.total_action = like_count,
 			n.updated_at = l.created_at
 			WITH u,l,p,n
@@ -587,12 +587,12 @@ func (service notificationService) UpdateLikedPostNotification(userID int64) (mo
 				ON CREATE SET
 					g.created_at = TIMESTAMP(),
 					n.actor =apoc.convert.toJson(u{id:ID(u),username:u.username,full_name:u.full_name,avatar:u.avatar}),
-					n.last_post=apoc.convert.toJson(p{id:ID(p),message:p.message,photo:p.photo}),
+					n.last_post=apoc.convert.toJson(p{id:ID(p),message:p.message,photo:p.photo,owner:owner{id:ID(owner),username:owner.username,full_name:owner.full_name,avatar:owner.avatar}}),
 					n.total_action = like_count,
 					n.updated_at = l.created_at
 				ON MATCH SET
 				n.actor =apoc.convert.toJson(u{id:ID(u),username:u.username,full_name:u.full_name,avatar:u.avatar}),
-				n.last_post=apoc.convert.toJson(p{id:ID(p),message:p.message,photo:p.photo}),
+				n.last_post=apoc.convert.toJson(p{id:ID(p),message:p.message,photo:p.photo,owner:owner{id:ID(owner),username:owner.username,full_name:owner.full_name,avatar:owner.avatar}}),
 				n.total_action = like_count,
 				n.updated_at = l.created_at
 				WITH u,l,p,n
@@ -648,13 +648,13 @@ func (service notificationService) UpdateCommentedPostNotification(userID int64)
 			ON CREATE SET
 				g.created_at = TIMESTAMP(),
 				n.updated_at = c.created_at,
-				n.last_post = apoc.convert.toJson(p{id:ID(p),message:p.message,photo:p.photo}),
+				n.last_post = apoc.convert.toJson(p{id:ID(p),message:p.message,photo:p.photo,owner:owner{id:ID(owner),username:owner.username,full_name:owner.full_name,avatar:owner.avatar}}),
 				n.total_action=total_action,
 				n.actor=apoc.convert.toJson(u{id:ID(u),username:u.username,full_name:u.full_name,avatar:u.avatar}),
 				n.last_comment = apoc.convert.toJson(c{id:ID(c),message:c.message})
 			ON MATCH SET
 				n.updated_at = c.created_at,
-				n.last_post = apoc.convert.toJson(p{id:ID(p),message:p.message,photo:p.photo}),
+				n.last_post = apoc.convert.toJson(p{id:ID(p),message:p.message,photo:p.photo,owner:owner{id:ID(owner),username:owner.username,full_name:owner.full_name,avatar:owner.avatar}}),
 				n.total_action=total_action,
 				n.actor=apoc.convert.toJson(u{id:ID(u),username:u.username,full_name:u.full_name,avatar:u.avatar}),
 				n.last_comment = apoc.convert.toJson(c{id:ID(c),message:c.message})

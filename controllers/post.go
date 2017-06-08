@@ -187,11 +187,14 @@ func (controller PostController) Create(c *gin.Context) {
 		//
 		// }()
 
-		// // push noti
-		// go func() {
-		// 	Notification := NotificationController{Service: services.NewNotificationService()}
-		// 	Notification.UpdatePostNotification(userID)
-		// }()
+		// push noti
+		go func() {
+			Notification := NotificationController{Service: services.NewNotificationService()}
+			err := Notification.UpdatePostNotification(userID)
+			if err != nil {
+				fmt.Printf("UpdateLikeNotification: %s\n", err.Error())
+			}
+		}()
 		return
 	}
 	helpers.ResponseServerErrorJSON(c)
