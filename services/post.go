@@ -60,10 +60,10 @@ func (service postService) GetAll(params helpers.ParamsGetAll, userID int64, myU
 	var stmt string
 	if params.Type == configs.SPostPhoto {
 		stmt = fmt.Sprintf(`
-		    MATCH(u:User) WHERE ID(u) = {userid}
-				MATCH(me:User) WHERE ID(me) = {myuserid}
+		    MATCH(u:User) WHERE ID(u) = {userID}
+				MATCH(me:User) WHERE ID(me) = {myUserID}
 		  	MATCH (s:Photo:Post)<-[r:POST]-(u)
-				WHERE s.privacy = 1 OR (s.privacy = 2 AND exists((me)-[:FOLLOW]->(u))) OR {userid} = {myuserid}
+				WHERE (s.privacy = 1 OR (s.privacy = 2 AND exists((me)-[:FOLLOW]->(u))) OR {userID} = {myUserID}) AND exists((:Group)-[:HAS]->(s))=false
 				RETURN
 					ID(s) AS id,
 					substring(s.message,0,250) AS message, length(s.message)>250 AS summary,
@@ -74,18 +74,18 @@ func (service postService) GetAll(params helpers.ParamsGetAll, userID int64, myU
 					u{id:ID(u), .username, .full_name, .avatar} AS owner,
 					exists((me)-[:LIKE]->(s)) AS is_liked,
 					exists((me)-[:FOLLOW]->(s)) AS is_following,
-					CASE WHEN {userid} = {myuserid} THEN true ELSE false END AS can_edit,
-					CASE WHEN {userid} = {myuserid} THEN true ELSE false END AS can_delete
+					CASE WHEN {userID} = {myUserID} THEN true ELSE false END AS can_edit,
+					CASE WHEN {userID} = {myUserID} THEN true ELSE false END AS can_delete
 				ORDER BY %s
 				SKIP {skip}
 				LIMIT {limit}
 		  	`, params.Sort)
 	} else if params.Type == configs.SPostStatus {
 		stmt = fmt.Sprintf(`
-		    MATCH(u:User) WHERE ID(u) = {userid}
-				MATCH(me:User) WHERE ID(me) = {myuserid}
+		    MATCH(u:User) WHERE ID(u) = {userID}
+				MATCH(me:User) WHERE ID(me) = {myUserID}
 		  	MATCH (s:Status:Post)<-[r:POST]-(u)
-				WHERE s.privacy = 1 OR (s.privacy = 2 AND exists((me)-[:FOLLOW]->(u))) OR {userid} = {myuserid}
+				WHERE (s.privacy = 1 OR (s.privacy = 2 AND exists((me)-[:FOLLOW]->(u))) OR {userID} = {myUserID}) AND exists((:Group)-[:HAS]->(s))=false
 				RETURN
 					ID(s) AS id,
 					substring(s.message,0,250) AS message, length(s.message)>250 AS summary,
@@ -95,18 +95,18 @@ func (service postService) GetAll(params helpers.ParamsGetAll, userID int64, myU
 					u{id:ID(u), .username, .full_name, .avatar} AS owner,
 					exists((me)-[:LIKE]->(s)) AS is_liked,
 					exists((me)-[:FOLLOW]->(s)) AS is_following,
-					CASE WHEN {userid} = {myuserid} THEN true ELSE false END AS can_edit,
-					CASE WHEN {userid} = {myuserid} THEN true ELSE false END AS can_delete
+					CASE WHEN {userID} = {myUserID} THEN true ELSE false END AS can_edit,
+					CASE WHEN {userID} = {myUserID} THEN true ELSE false END AS can_delete
 				ORDER BY %s
 				SKIP {skip}
 				LIMIT {limit}
 		  	`, params.Sort)
 	} else if params.Type == configs.SPost {
 		stmt = fmt.Sprintf(`
-		    MATCH(u:User) WHERE ID(u) = {userid}
-				MATCH(me:User) WHERE ID(me) = {myuserid}
+		    MATCH(u:User) WHERE ID(u) = {userID}
+				MATCH(me:User) WHERE ID(me) = {myUserID}
 		  	MATCH (s:Post)<-[r:POST]-(u)
-				WHERE s.privacy = 1 OR (s.privacy = 2 AND exists((me)-[:FOLLOW]->(u))) OR {userid} = {myuserid}
+				WHERE (s.privacy = 1 OR (s.privacy = 2 AND exists((me)-[:FOLLOW]->(u))) OR {userID} = {myUserID}) AND exists((:Group)-[:HAS]->(s))=false
 				RETURN
 					ID(s) AS id,
 					substring(s.message,0,250) AS message, length(s.message)>250 AS summary,
@@ -117,16 +117,16 @@ func (service postService) GetAll(params helpers.ParamsGetAll, userID int64, myU
 					u{id:ID(u), .username, .full_name, .avatar} AS owner,
 					exists((me)-[:LIKE]->(s)) AS is_liked,
 					exists((me)-[:FOLLOW]->(s)) AS is_following,
-					CASE WHEN {userid} = {myuserid} THEN true ELSE false END AS can_edit,
-					CASE WHEN {userid} = {myuserid} THEN true ELSE false END AS can_delete
+					CASE WHEN {userID} = {myUserID} THEN true ELSE false END AS can_edit,
+					CASE WHEN {userID} = {myUserID} THEN true ELSE false END AS can_delete
 				ORDER BY %s
 				SKIP {skip}
 				LIMIT {limit}
 		  	`, params.Sort)
 	}
 	paramsQuery := map[string]interface{}{
-		"userid":   userID,
-		"myuserid": myUserID,
+		"userID":   userID,
+		"myUserID": myUserID,
 		"skip":     params.Skip,
 		"limit":    params.Limit,
 	}
