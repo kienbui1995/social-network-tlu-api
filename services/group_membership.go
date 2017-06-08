@@ -314,7 +314,9 @@ func (service groupMembershipService) Update(membership models.GroupMembership) 
 	WHERE ID(r) = {membershipID}
 	SET g.pending_requests = CASE WHEN r.status = 0 AND {status}= 1 THEN  g.pending_requests -1  ELSE g.pending_requests END,
 			g.members = CASE WHEN r.status = 0 AND {status}= 1 THEN  g.members +1 ELSE g.members END,
-	r.updated_at = TIMESTAMP(), r.role = {role}, r.status = {status}
+			g.members = CASE WHEN r.role = 4 AND ({role}= 1 OR {role}=2})THEN  g.members +1 ELSE g.members END,
+			g.members = CASE WHEN (r.role = 1 OR r.role=2) AND {role}= 4 THEN  g.members -1 ELSE g.members END,
+			r.updated_at = TIMESTAMP(), r.role = {role}, r.status = {status}
 	RETURN
 		ID(r) AS id, r.created_at AS created_at, r.updated_at AS updated_at,
  		r.role AS role, r.status AS status,
