@@ -807,7 +807,6 @@ func (service postService) GetCanMentionedUsers(postID int64, params helpers.Par
  	SKIP {skip}
   LIMIT {limit}
  	RETURN  collect(user) AS users
-
 		`,
 		"user."+params.Sort)
 	p := map[string]interface{}{
