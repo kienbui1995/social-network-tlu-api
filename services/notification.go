@@ -576,13 +576,13 @@ func (service notificationService) UpdateMentionNotification(postID int64, userI
 // models.Notification error
 func (service notificationService) UpdateLikedPostNotification(userID int64) (models.Notification, error) {
 	stmt := `
-				MATCH(u:User)-[l:LIKE]->(p:Post)
+				MATCH(u:User)-[l:LIKE]->(p:Post)<-[:POST]-(owner:User)
 				WHERE ID(p) = {userID} AND p.privacy=1
-				WITH u,l,p
+				WITH u,l,p,owner
 				ORDER BY l.created_at DESC LIMIT 1
 				MATCH(u)-[l1:LIKE]->(p1:Post)
 				WHERE TIMESTAMP() - l1.created_at < {limit_time} AND exists((p1)<-[:HAS]-(:Group))=false AND p1.privacy <>3
-				WITH u,l,p,count(l1) AS like_count
+				WITH u,l,p,count(l1) AS like_count,owner
 				MERGE (u)-[g:GENERATE]->(n:Notification{action:{action}})
 				ON CREATE SET
 					g.created_at = TIMESTAMP(),
@@ -637,13 +637,13 @@ func (service notificationService) UpdateLikedPostNotification(userID int64) (mo
 // models.Notification error
 func (service notificationService) UpdateCommentedPostNotification(userID int64) (models.Notification, error) {
 	stmt := `
-			MATCH(p:Post)<-[a]-(c:Comment)<-[w]-(u:User)
+			MATCH (owner:User)-[:POST]->(p:Post)<-[a]-(c:Comment)<-[w]-(u:User)
 			WHERE ID(u) = {userID} AND p.privacy=1 AND exists((p)<-[:HAS]-(:Group))=false
-			WITH p,c,u
+			WITH p,c,u,owner
 			ORDER BY c.created_at DESC LIMIT 1
 			MATCH(p1:Post)<-[a]-(c1:Comment)<-[w]-(u)
 			WHERE TIMESTAMP() - c1.created_at < {limit_time} AND p1.privacy=1 AND exists((p1)<-[:HAS]-(:Group))=false
-			WITH p,c,u,count(c1) AS total_action
+			WITH p,c,u,count(c1) AS total_action,owner
 			MERGE (u)-[g:GENERATE]->(n:Notification{action:{action}})
 			ON CREATE SET
 				g.created_at = TIMESTAMP(),
