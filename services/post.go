@@ -789,24 +789,23 @@ func (service postService) GetUsers(postID int64, params helpers.ParamsGetAll, m
 // []models.UserFollowObject error
 func (service postService) GetCanMentionedUsers(postID int64, params helpers.ParamsGetAll, myUserID int64) ([]models.UserFollowObject, error) {
 	stmt := fmt.Sprintf(`
-	OPTIONAL MATCH (me:User)-[f:FOLLOW]-(u:User)
- 	WHERE id(me) = {myUserID}
- 	WITH ID(u) AS id,me
- 	OPTIONAL MATCH (u1:User)-[l:LIKE|:FOLLOW|:POST]->(p:Post) ,(u2)-[cr:WRITE]->(c:Comment)-[:AT]->(p)
- 	WHERE ID(p)= {postID} and u2<>u1 AND me<>u1 AND me<>u2
- 	WITH  collect(id)+collect(id(u1))+ collect(id(u2)) AS users, me,p
- 	UNWIND users AS x
- 	WITH DISTINCT x, me,p
-	OPTIONAL MATCH (p)<-[:HAS]-(g:Group)
-	WITH x, me,p,g
- 	MATCH (mention:User)
- 	WHERE CASE exists((p)<-[:HAS]-(g)) WHEN true THEN exists((mention)-[:JOIN{status:1}]->(g)) ELSE ID(mention) = x END
- 	WITH
- 		mention{id:ID(mention),.username, .avatar, .full_name, is_followed: exists((me)-[:FOLLOW]->(mention)) } AS user
- 	ORDER BY %s
- 	SKIP {skip}
-  LIMIT {limit}
- 	RETURN  collect(user) AS users
+		MATCH (p:Post) WHERE ID(p) = {postID}
+		OPTIONAL MATCH (me:User)-[f:FOLLOW]->(u:User) WHERE ID(me)={myUserID}
+	 	WITH ID(u) AS id,p,me
+	 	OPTIONAL MATCH (u1:User)-[l:LIKE|:FOLLOW|:POST]->(p) ,(u2:User)-[cr:WRITE]->(c:Comment)-[:AT]->(p)
+	 	WHERE  u2<>u1 AND me<>u1 AND me<>u2
+	 	WITH  collect(id)+collect(id(u1))+ collect(id(u2)) AS x,me
+
+		OPTIONAL MATCH(p:Post)<-[:HAS]-(:Group)<-[j:JOIN{status:1}]-(u3:User) WHERE ID(p)= 568 AND j.role<>4
+			WITH collect(ID(u3)) as ids3,x,me
+	 	MATCH (mention:User)
+	 	WHERE CASE  WHEN size(ids3)>0 THEN ID(mention)  in ids3  ELSE ID(mention) in x END
+	 	WITH
+	 		mention{id:ID(mention),.username, .avatar, .full_name, is_followed: exists((me)-[:FOLLOW]->(mention))} AS user
+	 	ORDER BY %s
+	 	SKIP {skip}
+	  LIMIT {limit}
+	 	RETURN  collect(user) AS users
 		`,
 		"user."+params.Sort)
 	p := map[string]interface{}{
