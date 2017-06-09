@@ -170,42 +170,21 @@ func (service commentService) Create(comment models.Comment, postID int64) (int6
 // models.Comment int64
 // int64 error
 func (service commentService) CreateWithMention(comment models.Comment, postID int64) (int64, error) {
-	var mentions []string
-	for _, mention := range comment.Mentions {
-		b, _ := json.Marshal(mention)
-		s := string(b)
-		mentions = append(mentions, s)
-	}
 
 	p := neoism.Props{
 		"message":  comment.Message,
 		"status":   comment.Status,
-		"mentions": mentions,
+		"mentions": comment.Mentions,
 	}
 	params := map[string]interface{}{
 		"props":  p,
 		"userid": comment.Owner.ID,
 		"postid": postID,
 	}
-	// if comment.Mentions != nil {
-	// 	var ids []int64
-	// 	for index := 0; index < len(comment.Mentions); index++ {
-	// 		ids = append(ids, comment.Mentions[index].ID)
-	// 	}
-	// }
-	// WITH {json} AS map
-	// MATCH (u:User)
-	// WHERE id(u)=map.owner
-	// CREATE (u)-[:WRITE]->(c:Comment{message:map.message})
-	// FOREACH (mention IN map.mentions |
-	//     MATCH (u2:User) WHERE id(u2) = mention.id
-	//     CREATE (c)-[:MENTION{name:mention.name, length:mention.length, offset:mention.offset}]->(u2))
-	// RETURN id(c) AS id
-
 	stmt := `
 	MATCH (u:User) WHERE ID(u) = {userid}
 	MATCH (s:Post) WHERE ID(s) = {postid}
-	CREATE (c:Comment { props } ) SET c.created_at = TIMESTAMP()
+	CREATE (c:Comment { props } ) SET c.created_at = TIMESTAMP(), c.mentions=apoc.convert.toJson({mentions})
 	CREATE (u)-[w:WRITE]->(c)-[a:AT]->(s)
 	SET s.comments = s.comments+1
 	RETURN ID(c) AS id
