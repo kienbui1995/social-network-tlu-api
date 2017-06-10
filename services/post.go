@@ -790,13 +790,13 @@ func (service postService) GetUsers(postID int64, params helpers.ParamsGetAll, m
 func (service postService) GetCanMentionedUsers(postID int64, params helpers.ParamsGetAll, myUserID int64) ([]models.UserFollowObject, error) {
 	stmt := fmt.Sprintf(`
 		MATCH (p:Post) WHERE ID(p) = {postID}
-		OPTIONAL MATCH (me:User)-[f:FOLLOW]->(u:User) WHERE ID(me)={myUserID}
+		OPTIONAL MATCH (me:User)-[f:FOLLOW]->(u:User) WHERE ID(me)={myUserID} AND (toLower(u.username) CONTAINS toLower({s})  OR toLower(u.full_name)  CONTAINS toLower({s}))
 	 	WITH ID(u) AS id,p,me
 	 	OPTIONAL MATCH (u1:User)-[l:LIKE|:FOLLOW|:POST]->(p) ,(u2:User)-[cr:WRITE]->(c:Comment)-[:AT]->(p)
-	 	WHERE  u2<>u1 AND me<>u1 AND me<>u2
+	 	WHERE  u2<>u1 AND me<>u1 AND me<>u2 AND (toLower(u1.username) CONTAINS toLower({s})  OR toLower(u1.full_name)  CONTAINS toLower({s})) AND (toLower(u2.username) CONTAINS toLower({s})  OR toLower(u2.full_name)  CONTAINS toLower({s}))
 	 	WITH  collect(id)+collect(id(u1))+ collect(id(u2)) AS x,me
 
-		OPTIONAL MATCH(p:Post)<-[:HAS]-(:Group)<-[j:JOIN{status:1}]-(u3:User) WHERE ID(p)= 568 AND j.role<>4
+		OPTIONAL MATCH(p:Post)<-[:HAS]-(:Group)<-[j:JOIN{status:1}]-(u3:User) WHERE ID(p)= {postID} AND j.role<>4 AND (toLower(u3.username) CONTAINS toLower({s})  OR toLower(u3.full_name)  CONTAINS toLower({s}))
 			WITH collect(ID(u3)) as ids3,x,me
 	 	MATCH (mention:User)
 	 	WHERE CASE  WHEN size(ids3)>0 THEN ID(mention)  in ids3  ELSE ID(mention) in x END
@@ -813,6 +813,7 @@ func (service postService) GetCanMentionedUsers(postID int64, params helpers.Par
 		"myUserID": myUserID,
 		"skip":     params.Skip,
 		"limit":    params.Limit,
+		"s":        params.Filter,
 	}
 	var res []struct {
 		Users []models.UserFollowObject `json:"users"`

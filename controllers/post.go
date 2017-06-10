@@ -557,7 +557,7 @@ func (controller PostController) GetUsers(c *gin.Context) {
 	params.Limit, _ = strconv.Atoi(c.DefaultQuery("limit", configs.SLimit))
 	params.Sort = c.DefaultQuery("sort", configs.SSort)
 	params.Sort, _ = helpers.ConvertSort(params.Sort)
-
+	params.Filter = c.Query("filter")
 	// get can mentioned users
 	if params.Type == configs.SCanMention {
 		users, errGetCanMentionedUsers := controller.Service.GetCanMentionedUsers(postID, params, myUserID)
