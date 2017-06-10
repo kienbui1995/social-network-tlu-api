@@ -224,7 +224,7 @@ func (controller NotificationController) UpdateLikeNotification(postID int64, us
 }
 
 // UpdateCommentNotification func
-func (controller NotificationController) UpdateCommentNotification(postID int64, userID int64, commentID int64) error {
+func (controller NotificationController) UpdateCommentNotification(postID int64, userID int64) error {
 	notify1, errUpdateCommentNotification := controller.Service.UpdateCommentNotification(postID)
 	if errUpdateCommentNotification != nil {
 		fmt.Printf("errUpdateCommentNotification: %s\n", errUpdateCommentNotification.Error())

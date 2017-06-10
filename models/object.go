@@ -55,10 +55,11 @@ type PostObject struct {
 
 // CommentObject struct
 type CommentObject struct {
-	ID      int64       `json:"id"`
-	Message string      `json:"message"`
-	Owner   *UserObject `json:"owner,omitempty"`
-	Post    *PostObject `json:"post,omitempty"`
+	ID       int64            `json:"id"`
+	Message  string           `json:"message"`
+	Mentions []*MentionObject `json:"mentions,omitempty"`
+	Owner    *UserObject      `json:"owner,omitempty"`
+	Post     *PostObject      `json:"post,omitempty"`
 }
 
 // ChannelObject struct

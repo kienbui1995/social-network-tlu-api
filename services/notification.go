@@ -30,7 +30,7 @@ type NotificationServiceInterface interface {
 	UpdateStatusNotification(userID int64) (models.Notification, error)
 	UpdatePhotoNotification(userID int64) (models.Notification, error)
 	UpdateCommentNotification(postID int64) (models.Notification, error)
-	UpdateMentionNotification(postID int64, userID int64, commentID int64) (models.Notification, error)
+	UpdateMentionNotification(postID int64, userID int64) (models.Notification, error)
 	UpdateLikedPostNotification(userID int64) (models.Notification, error)
 	UpdateCommentedPostNotification(userID int64) (models.Notification, error)
 	UpdateMentionedPostNotification(userID int64) (models.Notification, error)
@@ -303,7 +303,7 @@ func (service notificationService) UpdateFollowNotification(userID int64, object
 				n.updated_at = f.created_at,
 				n.actor = apoc.convert.toJson(u{id:ID(u),username:u.username,full_name:u.full_name,avatar:u.avatar}),
 				n.total_action = total_action,
-				n.last_user= apoc.convert.toJson(u1{id:ID(u1),username: u1.username, full_name: u1.full_name, avatar: u1.avatar})
+				n.last_user= apoc.convert.toJson(u1{id:ID(u1),username: u1.username, full_name: u1.full_name, avatar: CASE u1.avatar THEN "" })
 			ON MATCH SET
 				n.updated_at = f.created_at,
 				n.actor = apoc.convert.toJson(u{id:ID(u),username:u.username,full_name:u.full_name,avatar:u.avatar}),
@@ -361,13 +361,13 @@ func (service notificationService) UpdateCommentNotification(postID int64) (mode
 				g.created_at = TIMESTAMP(),
 				n.updated_at = c.created_at,
 				n.total_action = total_action,
-				n.last_comment = apoc.convert.toJson(c{id:ID(c),message: c.message}),
+				n.last_comment = apoc.convert.toJson(c{id:ID(c),message: c.message, mentions: c.mentions}),
 				n.actor = apoc.convert.toJson(u{id:ID(u),username:u.username,full_name:u.full_name,avatar:u.avatar}),
 				n.last_post= apoc.convert.toJson(p{id:ID(p), message:p.message,photo:p.photo,owner:owner{id:ID(owner),username:owner.username,full_name:owner.full_name,avatar:owner.avatar}})
 			ON MATCH SET
 				n.updated_at = c.created_at,
 				n.total_action = total_action,
-				n.last_comment = apoc.convert.toJson(c{id:ID(c),message: c.message}),
+				n.last_comment = apoc.convert.toJson(c{id:ID(c),message: c.message, mentions: c.mentions}),
 				n.last_actor = apoc.convert.toJson(u{id:ID(u),username:u.username,full_name:u.full_name,avatar:u.avatar}),
 				n.last_post= apoc.convert.toJson(p{id:ID(p),message:p.message,photo:p.photo,owner:owner{id:ID(owner),username:owner.username,full_name:owner.full_name,avatar:owner.avatar}})
 			WITH u,p,n
@@ -566,8 +566,64 @@ func (service notificationService) UpdatePhotoNotification(userID int64) (models
 // Notification with mention
 // int64 int64 int64
 // models.Notification error
-func (service notificationService) UpdateMentionNotification(postID int64, userID int64, commentID int64) (models.Notification, error) {
-	// ~doing ~needfix
+func (service notificationService) UpdateMentionNotification(postID int64, userID int64) (models.Notification, error) {
+	stmt := `
+			MATCH (actor:User)-[w]->(c:Comment)-[a]->(p:Post)<-[:POST]-(owner:User)
+			WHERE ID(p) = {postID} AND exists(c.mentions)=true
+			WITH actor, c,p, owner
+			ORDER BY c.created_at DESC LIMIT 1
+			MATCH (u1:User)-[w]->(c1:Comment)-[a]->(p)
+			WHERE TIMESTAMP() - c1.created_at < {limit_time}
+			WITH c,p,u, count(u1) AS total_action,owner
+			MERGE (p)-[g:GENERATE]->(n:Notification{action:{action}})
+			ON CREATE SET
+				g.created_at = TIMESTAMP(),
+				n.updated_at = c.created_at,
+				n.total_action = total_action,
+				n.last_comment = apoc.convert.toJson(c{id:ID(c),message: c.message}),
+				n.actor = apoc.convert.toJson(u{id:ID(u),username:u.username,full_name:u.full_name,avatar:u.avatar}),
+				n.last_post= apoc.convert.toJson(p{id:ID(p), message:p.message,photo:p.photo,owner:owner{id:ID(owner),username:owner.username,full_name:owner.full_name,avatar:owner.avatar}})
+			ON MATCH SET
+				n.updated_at = c.created_at,
+				n.total_action = total_action,
+				n.last_comment = apoc.convert.toJson(c{id:ID(c),message: c.message}),
+				n.last_actor = apoc.convert.toJson(u{id:ID(u),username:u.username,full_name:u.full_name,avatar:u.avatar}),
+				n.last_post= apoc.convert.toJson(p{id:ID(p),message:p.message,photo:p.photo,owner:owner{id:ID(owner),username:owner.username,full_name:owner.full_name,avatar:owner.avatar}})
+			WITH u,p,n
+			OPTIONAL MATCH (u1:User)-[:FOLLOW]->(p)
+			MERGE (n)<-[h:HAS]-(u1)
+			ON CREATE SET h.created_at = TIMESTAMP(), h.seen_at = 0
+			ON MATCH SET h.seen_at = 0
+			RETURN
+				ID(n) AS id,
+				apoc.convert.fromJsonMap(n.actor) AS actor,
+				n.action AS action,
+				n.total_action AS total_action,
+				apoc.convert.fromJsonMap(n.last_post) AS last_post,
+				apoc.convert.fromJsonMap(n.last_comment) AS last_comment,
+				"" AS title,
+				"" AS message,
+				n.updated_at AS updated_at,
+				n.created_at AS created_at
+			`
+	params := map[string]interface{}{
+		"postID":     postID,
+		"limit_time": configs.ITwoDays,
+		"action":     configs.IActionComment,
+	}
+	res := []models.Notification{}
+	cq := neoism.CypherQuery{
+		Statement:  stmt,
+		Parameters: params,
+		Result:     &res,
+	}
+	err := conn.Cypher(&cq)
+	if err != nil {
+		return models.Notification{}, err
+	}
+	if len(res) > 0 {
+		return res[0], nil
+	}
 	return models.Notification{}, nil
 }
 
@@ -651,13 +707,13 @@ func (service notificationService) UpdateCommentedPostNotification(userID int64)
 				n.last_post = apoc.convert.toJson(p{id:ID(p),message:p.message,photo:p.photo,owner:owner{id:ID(owner),username:owner.username,full_name:owner.full_name,avatar:owner.avatar}}),
 				n.total_action=total_action,
 				n.actor=apoc.convert.toJson(u{id:ID(u),username:u.username,full_name:u.full_name,avatar:u.avatar}),
-				n.last_comment = apoc.convert.toJson(c{id:ID(c),message:c.message})
+				n.last_comment = apoc.convert.toJson(c{id:ID(c),message:c.message,mentions: c.mentions})
 			ON MATCH SET
 				n.updated_at = c.created_at,
 				n.last_post = apoc.convert.toJson(p{id:ID(p),message:p.message,photo:p.photo,owner:owner{id:ID(owner),username:owner.username,full_name:owner.full_name,avatar:owner.avatar}}),
 				n.total_action=total_action,
 				n.actor=apoc.convert.toJson(u{id:ID(u),username:u.username,full_name:u.full_name,avatar:u.avatar}),
-				n.last_comment = apoc.convert.toJson(c{id:ID(c),message:c.message})
+				n.last_comment = apoc.convert.toJson(c{id:ID(c),message:c.message, mentions: c.mentions})
 			RETURN
 				ID(n) AS id,
 				apoc.convert.fromJsonMap(n.actor) AS actor,

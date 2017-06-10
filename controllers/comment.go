@@ -128,7 +128,7 @@ func (controller CommentController) Create(c *gin.Context) {
 		// push noti
 		go func() {
 			Notification := NotificationController{Service: services.NewNotificationService()}
-			err := Notification.UpdateCommentNotification(postID, myUserID, commentID)
+			err := Notification.UpdateCommentNotification(postID, myUserID)
 			if err != nil {
 				fmt.Printf("UpdateCommentNotification: %s\n", err.Error())
 			}

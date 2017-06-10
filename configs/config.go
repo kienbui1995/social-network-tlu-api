@@ -128,12 +128,15 @@ const (
 
 // const time to milliseconds
 const (
-	IOneDay  = 86400000
-	ITwoDays = 172800000
-	IOneWeek = 604800000
-	SOneDay  = "86400000"
-	STwoDays = "172800000"
-	SOneWeek = "604800000"
+	IOneMinute = 60000
+	IOneHour   = 3600000
+	IOneDay    = 86400000
+	ITwoDays   = 172800000
+	IOneWeek   = 604800000
+	IOneMonth  = 2629746000
+	SOneDay    = "86400000"
+	STwoDays   = "172800000"
+	SOneWeek   = "604800000"
 )
 
 // ErrorCode Table
