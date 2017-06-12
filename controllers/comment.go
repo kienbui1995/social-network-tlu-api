@@ -199,8 +199,8 @@ func (controller CommentController) Delete(c *gin.Context) {
 
 		// auto noti
 		go func() {
-			NotificationController := NotificationController{Service: services.NewNotificationService()}
-			NotificationController.Create(writerID, int(configs.IActionComment), postID)
+			Notification := NotificationController{Service: services.NewNotificationService()}
+			Notification.Create(writerID, int(configs.IActionComment), postID)
 		}()
 		return
 	}

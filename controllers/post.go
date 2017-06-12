@@ -670,11 +670,7 @@ func (controller PostController) CreateGroupPost(c *gin.Context) {
 		json.Privacy = 1
 	}
 	// ~doing ~needfix
-	action := " viết bài"
-	if len(json.Photo) > 0 {
-		action = " đăng ảnh"
-	}
-	action += " trong " + group.Name
+
 	post := models.Post{}
 
 	helpers.Replace(json, &post)

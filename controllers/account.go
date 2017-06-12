@@ -397,3 +397,41 @@ func (controller AccountController) ActiveByEmail(c *gin.Context) {
 	}
 
 }
+
+// CheckGetImagePermission func
+func (controller AccountController) CheckGetImagePermission(c *gin.Context) {
+	secretGetImage := []byte(configs.JWTSecretKeyGetImage)
+	tokenString := c.DefaultQuery("token", "")
+
+	if tokenString == "" || len(tokenString) == 0 {
+		helpers.ResponseAuthJSON(c, configs.EcAuthMissingToken, "Missing token")
+		return
+	}
+	service := services.NewAccountService()
+	valid, errValidateToken := helpers.ValidateToken(tokenString, secretGetImage)
+	if errValidateToken != nil {
+		helpers.ResponseAuthJSON(c, configs.EcAuthInvalidToken, "ValidateToken helpers: "+errValidateToken.Error())
+		return
+	} else if valid != true {
+		helpers.ResponseAuthJSON(c, configs.EcAuthInvalidToken, "ValidateToken helpers: valid is false")
+		return
+	}
+	claims, errExtractClaims := helpers.ExtractClaims(tokenString, secretGetImage) //~doing
+	if errExtractClaims != nil {
+		helpers.ResponseAuthJSON(c, configs.EcAuthInvalidToken, "ExtractClaims helpers: "+errExtractClaims.Error())
+		return
+	}
+	accountID := int64(claims["userid"].(float64))
+	fmt.Printf("accID: %v\n", accountID)
+	existToken, errCheckExistToken := service.CheckExistToken(accountID, tokenString)
+	if errCheckExistToken != nil {
+		helpers.ResponseAuthJSON(c, configs.EcAuthNoExistToken, "CheckExistToken services: "+errCheckExistToken.Error())
+		return
+	}
+	if existToken != true {
+		helpers.ResponseAuthJSON(c, configs.EcAuthNoExistToken, "CheckExistToken services: NULL")
+		return
+	}
+	c.Next()
+
+}

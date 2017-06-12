@@ -3,19 +3,26 @@ package configs
 //Const config system
 const (
 	// /neo4jURL = "Bolt://neo4j:tlis2016@tlu.cloudapp.net:7687"
-	URLDB   = "http://neo4j:madawg00@tlu.cloudapp.net:7474/db/data/"
+	URLDB   = "http://neo4j:madawg00@localhost:7474/db/data/"
 	APIPort = "8080"
 )
 
 // Security const
 const (
-	JWTSecretKey = "socialnetworkTLU"
+	JWTSecretKey         = "socialnetworkTLU"
+	JWTSecretKeyGetImage = "socialnetworkTLUgetimage"
 )
 
 // Mail Sender const
 const (
 	MailAddress = "kien.laohac@gmail.com"
 	MailKey     = ""
+)
+
+// Twilio const
+const (
+	TwilioSID       = "1"
+	TwilioAPISecret = "@"
 )
 
 // Sort const
@@ -293,12 +300,24 @@ const (
 
 // Role user
 const (
-	IAdminRole   = 1
-	IStudentRole = 2
-	ITeacherRole = 3
+	IUserRole       = 1
+	IStudentRole    = 2
+	ITeacherRole    = 3
+	ISupervisorRole = 4
+	IAdminRole      = 5
 )
 
 //FCMToken struct
 const (
 	FCMToken = "AAAAuET9LvY:APA91bEYl-fIkcY0w7b6umgBHD4yrZnG_v9I2iY1K3EnjUfSrYvlFYIG5vrmP8wFCH8ZMZ-Kx6U6u3XIsw-AIGehs-msWXtlzOq8R_50qAiqcsrJv9WQluALvjWPqSIAPrVS2RKZ4H6V"
+)
+
+// WS from TLU
+const (
+	SURLGetSemesterListByYear             = "https://elearning.thanglong.edu.vn/tlu-custom/ws/tluscn.ws.php?DanhSachHocKy&NamHoc="
+	SURLGetSubjectListBySemesterCode      = "https://elearning.thanglong.edu.vn/tlu-custom/ws/tluscn.ws.php?DanhSachHocPhan&HocKy="
+	SURLGetTeacherListBySemesterCode      = "https://elearning.thanglong.edu.vn/tlu-custom/ws/tluscn.ws.php?DanhSachGiangVien&HocKy="
+	SURLGetClassListBySemesterCode        = "https://elearning.thanglong.edu.vn/tlu-custom/ws/tluscn.ws.php?DanhSachLopHocPhan&HocKy="
+	SURLGetStudentListByClassCode         = "https://elearning.thanglong.edu.vn/tlu-custom/ws/tluscn.ws.php?DanhSachSinhVienLopHocPhan&MaLop="
+	SURLGetExamScheduleListBySemesterCode = "http://elearning.thanglong.edu.vn/tlu-custom/ws/tluscn.ws.php?LichThi&HocKy="
 )

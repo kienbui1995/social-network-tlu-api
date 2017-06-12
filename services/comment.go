@@ -1,7 +1,6 @@
 package services
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/jmcvetta/neoism"
@@ -84,8 +83,13 @@ func (service commentService) Get(commentID int64) (models.Comment, error) {
 	MATCH (c:Comment)<-[:WRITE]-(u:User)
 	WHERE ID(c) = {commentID}
 	RETURN
-		ID(c) AS id, c.message AS message, c.created_at AS created_at, c.updated_at AS updated_at ,c.status AS status,
-		u{id:ID(u),.username, .full_name, .avatar} AS owner, c.mentions
+		ID(c) AS id,
+		c.message AS message,
+		c.created_at AS created_at,
+		c.updated_at AS updated_at ,
+		c.status AS status,
+		u{id:ID(u),.username, .full_name, .avatar} AS owner,
+		apoc.convert.fromJsonList(c.mentions) AS mentions
 	`
 	params := map[string]interface{}{
 		"commentID": commentID,
@@ -113,22 +117,16 @@ func (service commentService) Get(commentID int64) (models.Comment, error) {
 // models.Comment int64
 // int64 error
 func (service commentService) Create(comment models.Comment, postID int64) (int64, error) {
-	var mentions []string
-	for _, mention := range comment.Mentions {
-		b, _ := json.Marshal(mention)
-		s := string(b)
-		mentions = append(mentions, s)
-	}
 
 	p := neoism.Props{
-		"message":  comment.Message,
-		"status":   comment.Status,
-		"mentions": mentions,
+		"message": comment.Message,
+		"status":  comment.Status,
 	}
 	params := map[string]interface{}{
-		"props":  p,
-		"userid": comment.Owner.ID,
-		"postid": postID,
+		"props":    p,
+		"userid":   comment.Owner.ID,
+		"postid":   postID,
+		"mentions": comment.Mentions,
 	}
 	// if comment.Mentions != nil {
 	// 	var ids []int64
@@ -140,7 +138,7 @@ func (service commentService) Create(comment models.Comment, postID int64) (int6
 	stmt := `
 	MATCH (u:User) WHERE ID(u) = {userid}
 	MATCH (s:Post) WHERE ID(s) = {postid}
-	CREATE (c:Comment { props } ) SET c.created_at = TIMESTAMP()
+	CREATE (c:Comment { props } ) SET c.created_at = TIMESTAMP(),c.mentions=apoc.convert.toJson({mentions})
 	CREATE (u)-[w:WRITE]->(c)-[a:AT]->(s)
 	SET s.comments = s.comments+1
 	RETURN ID(c) AS id
@@ -172,14 +170,14 @@ func (service commentService) Create(comment models.Comment, postID int64) (int6
 func (service commentService) CreateWithMention(comment models.Comment, postID int64) (int64, error) {
 
 	p := neoism.Props{
-		"message":  comment.Message,
-		"status":   comment.Status,
-		"mentions": comment.Mentions,
+		"message": comment.Message,
+		"status":  comment.Status,
 	}
 	params := map[string]interface{}{
-		"props":  p,
-		"userid": comment.Owner.ID,
-		"postid": postID,
+		"props":    p,
+		"userid":   comment.Owner.ID,
+		"postid":   postID,
+		"mentions": comment.Mentions,
 	}
 	stmt := `
 	MATCH (u:User) WHERE ID(u) = {userid}

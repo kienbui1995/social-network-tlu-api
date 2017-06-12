@@ -130,6 +130,29 @@ func (service notificationService) Update(notification models.Notification) (mod
 	return models.Notification{}, nil
 }
 
+// Update func
+// models.Notification
+// models.Notification error
+func (service notificationService) SeenAll(userID int64) (bool, error) {
+	stmt := `
+				MATCH(u:User)-[h:HAS]->(n:Notification)
+				WHERE ID(u) = {userID} AND h.seen_at= 0
+				SET h.seen_at = TIMESTAMP()
+				`
+	paramsQuery := map[string]interface{}{
+		"userID": userID,
+	}
+	cq := neoism.CypherQuery{
+		Statement:  stmt,
+		Parameters: paramsQuery,
+	}
+	err := conn.Cypher(&cq)
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
 // GetSubcriberNotification
 // int64
 // []int64 error
@@ -233,7 +256,7 @@ func (service notificationService) SeenNotification(notificationID int64, userID
 	stmt := `
 				MATCH (u:User) WHERE ID(u) = {userID}
 				MATCH(u)-[h:HAS]->(n:Notification)
-				WHERE ID(n) = {notificationID}
+				WHERE ID(n) = {notificationID} AND h.seen_at = 0
 				SET h.seen_at = TIMESTAMP()
 				`
 

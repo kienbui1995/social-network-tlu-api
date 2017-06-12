@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/jmcvetta/neoism"
+	"github.com/kienbui1995/social-network-tlu-api/configs"
 	"github.com/kienbui1995/social-network-tlu-api/models"
 )
 
@@ -30,6 +31,8 @@ type AccountServiceInterface interface {
 
 	ActiveByEmail(userID int64, activeCode string) (bool, error)
 	DeleteActiveCode(userID int64) (bool, error)
+
+	GetRoleFromUserID(userID int64) (int, error)
 }
 
 // accountService struct
@@ -646,4 +649,53 @@ func (service accountService) ActiveByEmail(userID int64, activeCode string) (bo
 		return false, nil
 	}
 	return false, errors.New("ActiveByEmail fail")
+}
+
+func (service accountService) GetRoleFromUserID(userID int64) (int, error) {
+	stmt := `
+	OPTIONAL MATCH(u:User{status:1})
+	WHERE ID(u)= {userID}
+
+	RETURN
+	exists((u)-[:IS_A{status:1}]->(:Student)) AS is_student,
+	exists((u)-[:IS_A{status:1}]->(:Teacher)) AS is_teacher,
+	exists((u)-[:IS_A{status:1}]->(:Supervisor)) AS is_supervisor,
+	exists((u)-[:IS_A{status:1}]->(:Admin)) AS is_admin,
+	CASE exists(u.created_at) WHEN true THEN true ELSE false END AS is_user
+	`
+	res := []struct {
+		IsStudent    bool `json:"is_student"`
+		IsTeacher    bool `json:"is_teacher"`
+		IsSuperVisor bool `json:"is_supervisor"`
+		IsAdmin      bool `json:"is_admin"`
+		IsUser       bool `json:"is_user"`
+	}{}
+	params := neoism.Props{
+		"userID": userID,
+	}
+	cq := neoism.CypherQuery{
+		Statement:  stmt,
+		Parameters: params,
+		Result:     &res,
+	}
+	err := conn.Cypher(&cq)
+	if err != nil {
+		return -1, err
+	}
+	if len(res) > 0 {
+		fmt.Printf("kq service: %v\n", res[0])
+		if res[0].IsAdmin {
+			return configs.IAdminRole, nil
+		} else if res[0].IsSuperVisor {
+			return configs.ISupervisorRole, nil
+		} else if res[0].IsTeacher {
+			return configs.ITeacherRole, nil
+		} else if res[0].IsStudent {
+			return configs.IStudentRole, nil
+		} else if res[0].IsUser {
+			return configs.IUserRole, nil
+		}
+		return -1, nil
+	}
+	return -1, errors.New("get role by userID fail")
 }
