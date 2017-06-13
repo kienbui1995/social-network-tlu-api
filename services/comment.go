@@ -28,7 +28,7 @@ type commentService struct {
 }
 
 // NewCommentService to constructor
-func NewCommentService() commentService {
+func NewCommentService() CommentServiceInterface {
 	return commentService{}
 }
 

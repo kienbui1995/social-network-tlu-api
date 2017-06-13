@@ -30,7 +30,11 @@ func InitRoutes() *gin.Engine {
 			AddRoutesGroups(v1)
 			AddRoutesGroupMemberships(v1)
 			AddRoutesNotifications(v1)
-			AddRoutesSemester(v1)
+			AddRoutesSemesters(v1)
+			AddRoutesSubjects(v1)
+			AddRoutesTeachers(v1)
+			AddRoutesClasses(v1)
+			AddRoutesStudents(v1)
 		}
 
 	}

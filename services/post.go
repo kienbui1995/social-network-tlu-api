@@ -49,7 +49,7 @@ type PostServiceInterface interface {
 type postService struct{}
 
 // NewPostService to constructor
-func NewPostService() postService {
+func NewPostService() PostServiceInterface {
 	return postService{}
 }
 

@@ -24,7 +24,7 @@ type GroupMembershipServiceInterface interface {
 type groupMembershipService struct{}
 
 // NewGroupMembershipService to constructor
-func NewGroupMembershipService() groupMembershipService {
+func NewGroupMembershipService() GroupMembershipServiceInterface {
 	return groupMembershipService{}
 }
 

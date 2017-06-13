@@ -22,7 +22,7 @@ type SubscriptionServiceInterface interface {
 type subscriptionService struct{}
 
 // NewSubscriberService to constructor
-func NewSubscriberService() subscriptionService {
+func NewSubscriberService() SubscriptionServiceInterface {
 	return subscriptionService{}
 }
 

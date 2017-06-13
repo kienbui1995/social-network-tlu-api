@@ -9,40 +9,40 @@ import (
 	"github.com/kienbui1995/social-network-tlu-api/models"
 )
 
-// SemesterServiceInterface include method list
-type SemesterServiceInterface interface {
-	GetAll(params helpers.ParamsGetAll) ([]models.Semester, error)
+// SubjectServiceInterface include method list
+type SubjectServiceInterface interface {
+	GetAll(params helpers.ParamsGetAll) ([]models.Subject, error)
 	// Get(semesterID int64) (models.Semester, error)
 	// Delete(semesterID int64) (bool, error)
 	// Create(semester models.Semester) (int64, error)
 	// Update(semester models.Semester) (models.Semester, error)
-	// CheckExistSemester(semesterID int64) (bool, error)
+	// CheckExistSubject(subjectID int64) (bool, error)
 
 	//update from TLU
-	UpdateFromTLU(year string) (bool, error)
+	UpdateFromTLU(semesterCode string) (bool, error)
 }
 
-// semesterService struct
-type semesterService struct{}
+// subjectService struct
+type subjectService struct{}
 
-// NewSemesterService to constructor
-func NewSemesterService() SemesterServiceInterface {
-	return semesterService{}
+// NewSubjectService to constructor
+func NewSubjectService() SubjectServiceInterface {
+	return subjectService{}
 }
 
 // GetAll func
 // helpers.ParamsGetAll
 // models.Post error
-func (service semesterService) GetAll(params helpers.ParamsGetAll) ([]models.Semester, error) {
+func (service subjectService) GetAll(params helpers.ParamsGetAll) ([]models.Subject, error) {
 	var stmt string
 	stmt = fmt.Sprintf(`
-		    MATCH(s:Semester)
+		    MATCH(s:Subject)
 				with s
 				ORDER BY %s
 				SKIP {skip}
 				LIMIT {limit}
 				RETURN
-					collect(s{id:ID(s),.*}) AS semester
+					collect(s{id:ID(s),.*}) AS subject
 
 
 		  	`, "s."+params.Sort)
@@ -52,7 +52,7 @@ func (service semesterService) GetAll(params helpers.ParamsGetAll) ([]models.Sem
 		"limit": params.Limit,
 	}
 	res := []struct {
-		Semester []models.Semester `json:"semester"`
+		Subject []models.Subject `json:"subject"`
 	}{}
 	cq := neoism.CypherQuery{
 		Statement:  stmt,
@@ -64,7 +64,7 @@ func (service semesterService) GetAll(params helpers.ParamsGetAll) ([]models.Sem
 		return nil, err
 	}
 	if len(res) > 0 {
-		return res[0].Semester, nil
+		return res[0].Subject, nil
 	}
 	return nil, nil
 }
@@ -72,7 +72,7 @@ func (service semesterService) GetAll(params helpers.ParamsGetAll) ([]models.Sem
 // Get func to get a post
 // int64 int64
 // models.Post error
-// func (service semesterService) Get(semesterID int64) (models.Semester, error) {
+// func (service subjectService) Get(semesterCode string) (models.Subject, error) {
 // 	stmt := `
 // 			MATCH(me:User) WHERE ID(me) = {myuserid}
 // 			MATCH (s:Post)<-[:POST]-(u:User)
@@ -290,17 +290,17 @@ func (service semesterService) GetAll(params helpers.ParamsGetAll) ([]models.Sem
 // 	return models.Post{}, errors.New("Dont' update user status")
 // }
 
-// // CheckExistSemester func
+// // CheckExistPost func
 // // int64
 // // bool error
-// func (service semesterService) CheckExistSemester(semesterID int64) (bool, error) {
+// func (service subjectService) CheckExistSubject(subjectID int64) (bool, error) {
 // 	stmt := `
-// 		MATCH (s:Semester)
-// 		WHERE ID(s)={semesterID}
+// 		MATCH (s:Subject)
+// 		WHERE ID(s)={subjectID}
 // 		RETURN ID(s) AS id
 // 		`
 // 	params := neoism.Props{
-// 		"semesterID": semesterID,
+// 		"subjectID": subjectID,
 // 	}
 //
 // 	res := []struct {
@@ -318,7 +318,7 @@ func (service semesterService) GetAll(params helpers.ParamsGetAll) ([]models.Sem
 // 	}
 //
 // 	if len(res) > 0 {
-// 		if res[0].ID == semesterID {
+// 		if res[0].ID == subjectID {
 // 			return true, nil
 // 		}
 // 	}
@@ -328,23 +328,23 @@ func (service semesterService) GetAll(params helpers.ParamsGetAll) ([]models.Sem
 // UpdateFromTLU func
 // models.Post
 // models.Post error
-func (service semesterService) UpdateFromTLU(year string) (bool, error) {
-
+func (service subjectService) UpdateFromTLU(semesterCode string) (bool, error) {
 	stmt := fmt.Sprintf(`
     CALL apoc.load.json("%s") YIELD value AS d
-    UNWIND d.data AS hocki
-    MERGE (s:Semester{code:hocki.Ma})
-    ON CREATE SET
-    	s.code =toString(hocki.Ma),
-      s.year = toString(hocki.Nam),
-      s.group = hocki.Nhom,
-      s.symbol = toString(hocki.Kyhieu),
-      s.start_at = toString(hocki.Thoigianbd),
-      s.finish_at=toString(hocki.Thoigiankt),
-      s.name=toString(hocki.Tenky),
-				s.status =1,
-      s.created_at= timestamp()
-			`, configs.SURLGetSemesterListByYear+year)
+      UNWIND d.data AS mon
+      MERGE (s:Subject{code:toString(mon.Mamon),credits:toInteger(mon.Sotinchi),factor:toFloat(mon.Hesomon)})
+      ON CREATE SET
+        s.code =toString(mon.Mamon),
+        s.name=toString(mon.Tenmon),
+        s.credits =toInteger(mon.Sotinchi),
+        s.factor=toFloat(mon.Hesomon),
+        s.created_at= timestamp(),
+        s.status =1
+      WITH s
+      MATCH(semester:Semester) where semester.code = "%s"
+      MERGE (semester)-[h:HAS]->(s)
+      ON CREATE SET h.created_at = timestamp()
+			`, configs.SURLGetSubjectListBySemesterCode+semesterCode, semesterCode)
 	// params := map[string]interface{}{
 	// 	"url": " + configs.SURLGetSemesterListByYear + year + "\"",
 	// }
@@ -355,6 +355,7 @@ func (service semesterService) UpdateFromTLU(year string) (bool, error) {
 		// // Parameters: params,
 		// Result: &res,
 	}
+	// fmt.Printf("cq: $v\n", cq)
 	err := conn.Cypher(&cq)
 	if err != nil {
 		return false, err

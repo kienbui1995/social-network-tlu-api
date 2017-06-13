@@ -6,10 +6,10 @@ import (
 	"github.com/kienbui1995/social-network-tlu-api/services"
 )
 
-// AddRoutesSemesters router
-func AddRoutesSemesters(r *gin.RouterGroup) {
-	controller := controllers.SemesterController{Service: services.NewSemesterService()}
-	routes := r.Group("/semesters")
+// AddRoutesTeachers router
+func AddRoutesTeachers(r *gin.RouterGroup) {
+	controller := controllers.TeacherController{Service: services.NewTeacherService()}
+	routes := r.Group("/teachers")
 	{
 		routes.PUT("", controller.UpdateFromTLU)
 		routes.GET("", controller.GetAll)

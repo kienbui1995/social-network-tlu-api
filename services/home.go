@@ -19,7 +19,7 @@ type HomeServiceInterface interface {
 type homeService struct{}
 
 // NewHomeService to constructor
-func NewHomeService() homeService {
+func NewHomeService() HomeServiceInterface {
 	return homeService{}
 }
 

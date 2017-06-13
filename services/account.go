@@ -33,13 +33,14 @@ type AccountServiceInterface interface {
 	DeleteActiveCode(userID int64) (bool, error)
 
 	GetRoleFromUserID(userID int64) (int, error)
+	GetDeviceByUserIDs(accountIDs []int64) ([]string, error)
 }
 
 // accountService struct
 type accountService struct{}
 
 // NewAccountService contructor
-func NewAccountService() accountService {
+func NewAccountService() AccountServiceInterface {
 	return accountService{}
 }
 

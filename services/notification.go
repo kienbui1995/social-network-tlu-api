@@ -40,7 +40,7 @@ type NotificationServiceInterface interface {
 type notificationService struct{}
 
 // NewNotificationService to constructor
-func NewNotificationService() notificationService {
+func NewNotificationService() NotificationServiceInterface {
 	return notificationService{}
 }
 

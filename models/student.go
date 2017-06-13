@@ -2,11 +2,12 @@ package models
 
 // Student struct
 type Student struct {
-	ID     int64  `json:"id"`
-	Code   string `json:"code"`
-	Name   string `json:"name"`
-	Photo  string `json:"photo,omitempty"`
-	Email  string `json:"email,omitempty"`
-	Phone  string `json:"phone,omitempty"`
-	Status int    `json:"status,omitempty"`
+	ID        int64  `json:"id"`
+	Code      string `json:"code"`
+	FirstName string `json:"first_name,omitempty"`
+	Birthday  string `json:"birthday,omitempty"`
+	LastName  string `json:"last_name,omitempty"`
+	Email     string `json:"email,omitempty"`
+	Phone     string `json:"phone,omitempty"`
+	Status    int    `json:"status,omitempty"`
 }

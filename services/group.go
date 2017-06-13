@@ -34,7 +34,7 @@ type GroupServiceInterface interface {
 type groupService struct{}
 
 // NewGroupService to constructor
-func NewGroupService() groupService {
+func NewGroupService() GroupServiceInterface {
 	return groupService{}
 }
 

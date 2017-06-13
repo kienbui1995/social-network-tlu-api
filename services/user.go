@@ -25,7 +25,7 @@ type UserServiceInterface interface {
 type userService struct{}
 
 // NewUserService to constructor
-func NewUserService() userService {
+func NewUserService() UserServiceInterface {
 	return userService{}
 
 }

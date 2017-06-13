@@ -79,3 +79,37 @@ type ActorObject struct {
 func (object ActorObject) IsEmpty() bool {
 	return object == ActorObject{}
 }
+
+// TeacherObject struct
+type TeacherObject struct {
+	ID   int64  `json:"id"`
+	Code string `json:"code"`
+	Name int64  `json:"name"`
+}
+
+// RoomObject struct
+type RoomObject struct {
+	ID   int64  `json:"id"`
+	Code string `json:"code"`
+}
+
+// SubjectObject struct
+type SubjectObject struct {
+	ID   int64  `json:"id"`
+	Code string `json:"code"`
+	Name string `json:"name"`
+}
+
+// ClassObject struct
+type ClassObject struct {
+	ID   int64  `json:"id"`
+	Code string `json:"code"`
+	Name string `json:"name"`
+}
+
+// StudentObject struct
+type StudentObject struct {
+	ID   int64  `json:"id"`
+	Code string `json:"code"`
+	Name string `json:"name"`
+}

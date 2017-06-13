@@ -2,22 +2,17 @@ package models
 
 // Class struct
 type Class struct {
-	ID          int64         `json:"id"`
-	Code        string        `json:"code"`
-	Name        string        `json:"name,omitempty"`
-	StudyShifts []*StudyShift `json:"study_shift"`
-	Status      int           `json:"status,omitempty"`
-	Teacher     *Teacher      `json:"teacher,omitempty"`
-	Subject     *Subject      `json:"subject,omitempty"`
-	Semester    *Semester     `json:"semester,omitempty"`
-}
-
-// StudyShift struct
-type StudyShift struct {
-	ID      int64      `json:"id"`
-	Day     string     `json:"day"`
-	StartAt int        `json:"start_at"`
-	EndAt   int        `json:"end_at"`
-	Room    *Classroom `json:"room,omitempty"`
-	Status  int        `json:"status,omitempty"`
+	Teacher   *TeacherObject `json:"teacher,omitempty"`
+	Subject   *SubjectObject `json:"subject,omitempty"`
+	Room      *RoomObject    `json:"room,omitempty"`
+	ID        int64          `json:"id"`
+	Code      string         `json:"code"`
+	Name      string         `json:"name,omitempty"`
+	Symbol    string         `json:"symbol,omitempty"`
+	Day       string         `json:"day,omitempty"`
+	StartAt   string         `json:"start_at,omitempty"`
+	FinishAt  string         `json:"finish_at,omitempty"`
+	Status    int            `json:"status,omitempty"`
+	CreatedAt int64          `json:"created_at,omitempty"`
+	UpdatedAt int64          `json:"updated_at,omitempty"`
 }
