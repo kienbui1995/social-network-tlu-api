@@ -84,7 +84,7 @@ func (object ActorObject) IsEmpty() bool {
 type TeacherObject struct {
 	ID   int64  `json:"id"`
 	Code string `json:"code"`
-	Name int64  `json:"name"`
+	Name string `json:"name"`
 }
 
 // RoomObject struct
@@ -112,4 +112,12 @@ type StudentObject struct {
 	ID   int64  `json:"id"`
 	Code string `json:"code"`
 	Name string `json:"name"`
+}
+
+// SemesterObject struct
+type SemesterObject struct {
+	ID     int64  `json:"id"`
+	Code   string `json:"code"`
+	Symbol string `json:"symbol,omitempty"`
+	Name   string `json:"name,omitempty"`
 }

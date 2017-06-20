@@ -6,6 +6,7 @@ import (
 	"time"
 
 	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/kienbui1995/social-network-tlu-api/configs"
 	"github.com/kienbui1995/social-network-tlu-api/models"
 )
 
@@ -16,7 +17,8 @@ func GenerateToken(account models.Account, secret []byte) (string, error) {
 		"userid": account.ID,
 		"device": account.Device,
 		"role":   account.Role,
-		"exp":    time.Now().Add(time.Hour * 720).Unix(),
+		"code":   account.Code,
+		"exp":    time.Now().Add(configs.JWTTimeExpire).Unix(),
 	})
 
 	tokenstring, err := token.SignedString(secret)

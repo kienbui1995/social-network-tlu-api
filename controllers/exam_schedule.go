@@ -10,15 +10,15 @@ import (
 	"github.com/kienbui1995/social-network-tlu-api/services"
 )
 
-// ClassController struct
-type ClassController struct {
-	Service services.ClassServiceInterface
+// ExamScheduleController struct
+type ExamScheduleController struct {
+	Service services.ExamScheduleServiceInterface
 }
 
 // Admin
 
 // GetAll func
-func (controller ClassController) GetAll(c *gin.Context) {
+func (controller ExamScheduleController) GetAll(c *gin.Context) {
 	// code, errParseInt := strconv.ParseInt(c.Query("student_code"), 10, 64)
 	// if errParseInt != nil {
 	// 	helpers.ResponseBadRequestJSON(c, configs.EcParam, "Invalid params")
@@ -217,7 +217,7 @@ func (controller ClassController) GetAll(c *gin.Context) {
 // }
 
 // UpdateFromTLU func
-func (controller ClassController) UpdateFromTLU(c *gin.Context) {
+func (controller ExamScheduleController) UpdateFromTLU(c *gin.Context) {
 	fromSemester, _ := strconv.ParseInt(c.Query("from"), 10, 64)
 	toSemester, _ := strconv.ParseInt(c.Query("to"), 10, 64)
 
@@ -260,7 +260,7 @@ func (controller ClassController) UpdateFromTLU(c *gin.Context) {
 // Student
 
 // GetAllByStudent func
-func (controller ClassController) GetAllByStudent(c *gin.Context) {
+func (controller ExamScheduleController) GetAllByStudent(c *gin.Context) {
 	studentCode := c.Query("student_code")
 	semesterCode := c.Query("semester_code")
 
@@ -277,7 +277,6 @@ func (controller ClassController) GetAllByStudent(c *gin.Context) {
 		return
 	}
 	if role != configs.IStudentRole && role != configs.IAdminRole && role != configs.ISupervisorRole && role != configs.ITeacherRole {
-		fmt.Printf("role: %v\n", role)
 		helpers.ResponseAuthJSON(c, 200, "Permissions error")
 		return
 	}

@@ -11,6 +11,7 @@ import (
 
 // ClassServiceInterface include method list
 type ClassServiceInterface interface {
+	// Admin
 	GetAll(params helpers.ParamsGetAll) ([]models.Class, error)
 	// Get(semesterID int64) (models.Semester, error)
 	// Delete(semesterID int64) (bool, error)
@@ -20,6 +21,9 @@ type ClassServiceInterface interface {
 
 	//update from TLU
 	UpdateFromTLU(semesterCode string) (bool, error)
+
+	// A Student
+	GetAllByStudent(params helpers.ParamsGetAll, semesterCode string, studentCode string) ([]models.Class, error)
 }
 
 // classService struct
@@ -65,6 +69,58 @@ func (service classService) GetAll(params helpers.ParamsGetAll) ([]models.Class,
 	}
 	if len(res) > 0 {
 		return res[0].Class, nil
+	}
+	return nil, nil
+}
+
+// GetAllByStudent func
+// helpers.ParamsGetAll string
+// []models.Class error
+func (service classService) GetAllByStudent(params helpers.ParamsGetAll, semesterCode string, studentCode string) ([]models.Class, error) {
+	var stmt string
+	stmt = fmt.Sprintf(`
+		MATCH (sub:Subject)<-[:TEACH_ABOUT]-(c:Class)<-[e:ENROLL]-(s:Student),
+					(c)-[:IN]->(r:Room),
+					(c)<-[:TEACH]-(t:Teacher),
+					(c)<-[:OPENED]-(semester:Semester)
+		WHERE toLower(s.code) = toLower({studentCode}) AND semester.code = {semesterCode}
+		WITH
+		c{
+		id: ID(c),.*,
+		subject: sub{id:ID(sub),.code,.name},
+		room: r{id:ID(r),.code},
+		teacher: t{id:ID(t),.code,name: t.last_name+" "+t.first_name}
+		} AS class
+		ORDER BY %s
+		SKIP {skip}
+		LIMiT {limit}
+		return collect(class) AS classes
+
+		  	`, "class."+params.Sort)
+
+	paramsQuery := map[string]interface{}{
+		"skip":         params.Skip,
+		"limit":        params.Limit,
+		"studentCode":  studentCode,
+		"semesterCode": semesterCode,
+	}
+	res := []struct {
+		Classes []models.Class `json:"classes"`
+	}{}
+	// res := []interface{}{}
+	cq := neoism.CypherQuery{
+		Statement:  stmt,
+		Parameters: paramsQuery,
+		Result:     &res,
+	}
+	fmt.Printf("cq: %v\n", cq)
+	err := conn.Cypher(&cq)
+	if err != nil {
+		return nil, err
+	}
+	if len(res) > 0 {
+		fmt.Printf("res: %v\n", res)
+		return res[0].Classes, nil
 	}
 	return nil, nil
 }
@@ -171,7 +227,7 @@ func (service classService) GetAll(params helpers.ParamsGetAll) ([]models.Class,
 // 				SET s.created_at = TIMESTAMP(), f.created_at = TIMESTAMP()
 // 				WITH s,u
 // 				MATCH(u1:User)-[:FOLLOW]->(u)
-// 				CREATE (s)-[g:GENERATE]->(n:Notification)<-[:HAS]-(u1)
+// 				CREATE (s)-[g:GENERATE]->(n:Notification)<-[:REGISTERED]-(u1)
 // 				SET n.action = {action}, g.created_at = TIMESTAMP(), n.updated_at = TIMESTAMP()
 // 				RETURN ID(s) as id
 // 		  	`
@@ -194,7 +250,7 @@ func (service classService) GetAll(params helpers.ParamsGetAll) ([]models.Class,
 // 				SET s.created_at = TIMESTAMP(), f.created_at = TIMESTAMP()
 // 				WITH s,u
 // 				MATCH(u1:User)-[:FOLLOW]->(u)
-// 				CREATE (s)-[g:GENERATE]->(n:Notification)<-[:HAS]-(u1)
+// 				CREATE (s)-[g:GENERATE]->(n:Notification)<-[:REGISTERED]-(u1)
 // 				SET n.action = {action}, g.created_at = TIMESTAMP(), n.updated_at = TIMESTAMP()
 // 				RETURN ID(s) as id
 // 		  	`
@@ -346,9 +402,10 @@ func (service classService) UpdateFromTLU(semesterCode string) (bool, error) {
         c.finish_at = toString(lop.Giokt),
         c.status =1,
         c.created_at = timestamp()
-      MERGE (t)-[:TEACH]->(c)<-[:HAS]-(sub)
-      MERGE (c)-[:AT]->(r)
-      MERGE (semester)-[:HAS]->(c)
+      MERGE (t)-[:TEACH]->(c)
+			MERGE (c)-[:TEACH_ABOUT]->(sub)
+      MERGE (c)-[:IN]->(r)
+      MERGE (semester)-[:OPENED]->(c)
 			`, configs.SURLGetClassListBySemesterCode+semesterCode, semesterCode)
 	// params := map[string]interface{}{
 	// 	"url": " + configs.SURLGetSemesterListByYear + year + "\"",

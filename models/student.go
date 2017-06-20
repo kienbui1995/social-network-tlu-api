@@ -10,4 +10,6 @@ type Student struct {
 	Email     string `json:"email,omitempty"`
 	Phone     string `json:"phone,omitempty"`
 	Status    int    `json:"status,omitempty"`
+	CreatedAt int64  `json:"created_at,omitempty"`
+	UpdatedAt int64  `json:"updated_at,omitempty"`
 }

@@ -1,16 +1,20 @@
 package configs
 
+import "time"
+
 //Const config system
 const (
+	ServerDB = "localhost"
 	// /neo4jURL = "Bolt://neo4j:tlis2016@tlu.cloudapp.net:7687"
-	URLDB   = "http://neo4j:madawg00@localhost:7474/db/data/"
+	URLDB   = "http://neo4j:madawg00@" + ServerDB + ":7474/db/data/"
 	APIPort = "8080"
 )
 
 // Security const
 const (
-	JWTSecretKey         = "socialnetworkTLU"
-	JWTSecretKeyGetImage = "socialnetworkTLUgetimage"
+	JWTSecretKey         = "socialnetworkTLU"         // for login token
+	JWTSecretKeyGetImage = "socialnetworkTLUgetimage" // for get img from TLU
+	JWTTimeExpire        = time.Hour * 720            // time to expire token
 )
 
 // Mail Sender const

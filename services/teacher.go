@@ -171,7 +171,7 @@ func (service teacherService) GetAll(params helpers.ParamsGetAll) ([]models.Teac
 // 				SET s.created_at = TIMESTAMP(), f.created_at = TIMESTAMP()
 // 				WITH s,u
 // 				MATCH(u1:User)-[:FOLLOW]->(u)
-// 				CREATE (s)-[g:GENERATE]->(n:Notification)<-[:HAS]-(u1)
+// 				CREATE (s)-[g:GENERATE]->(n:Notification)<-[:REGISTERED]-(u1)
 // 				SET n.action = {action}, g.created_at = TIMESTAMP(), n.updated_at = TIMESTAMP()
 // 				RETURN ID(s) as id
 // 		  	`
@@ -194,7 +194,7 @@ func (service teacherService) GetAll(params helpers.ParamsGetAll) ([]models.Teac
 // 				SET s.created_at = TIMESTAMP(), f.created_at = TIMESTAMP()
 // 				WITH s,u
 // 				MATCH(u1:User)-[:FOLLOW]->(u)
-// 				CREATE (s)-[g:GENERATE]->(n:Notification)<-[:HAS]-(u1)
+// 				CREATE (s)-[g:GENERATE]->(n:Notification)<-[:REGISTERED]-(u1)
 // 				SET n.action = {action}, g.created_at = TIMESTAMP(), n.updated_at = TIMESTAMP()
 // 				RETURN ID(s) as id
 // 		  	`

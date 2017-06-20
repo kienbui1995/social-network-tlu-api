@@ -49,7 +49,7 @@ func NewNotificationService() NotificationServiceInterface {
 func (service notificationService) GetAll(params helpers.ParamsGetAll, userID int64) ([]models.Notification, error) {
 	var stmt string
 	stmt = fmt.Sprintf(`
-		MATCH(u:User)-[h:HAS]->(n:Notification) WHERE ID(u) = {userID}
+		MATCH(u:User)-[h:REGISTERED]->(n:Notification) WHERE ID(u) = {userID}
 		RETURN
 			ID(n) AS id,
 			CASE exists(n.actor) WHEN true THEN apoc.convert.getJsonProperty(n,"actor") END AS actor,
@@ -135,7 +135,7 @@ func (service notificationService) Update(notification models.Notification) (mod
 // models.Notification error
 func (service notificationService) SeenAll(userID int64) (bool, error) {
 	stmt := `
-				MATCH(u:User)-[h:HAS]->(n:Notification)
+				MATCH(u:User)-[h:REGISTERED]->(n:Notification)
 				WHERE ID(u) = {userID} AND h.seen_at= 0
 				SET h.seen_at = TIMESTAMP()
 				`
@@ -158,7 +158,7 @@ func (service notificationService) SeenAll(userID int64) (bool, error) {
 // []int64 error
 func (service notificationService) GetNotificationSubcriber(notificationID int64) ([]int64, error) {
 	stmt := `
-				MATCH(u:User)-[h:HAS]->(n:Notification)
+				MATCH(u:User)-[h:REGISTERED]->(n:Notification)
 				WHERE ID(n) = {notificationID}
 				RETURN collect(ID(u)) AS ids
 				`
@@ -189,7 +189,7 @@ func (service notificationService) CreateNotificationSubcription(objectID int64,
 				MATCH (u:User) WHERE ID(u) = {userID}
 				MATCH(obj)-[g:GENERATE]->(n:Notification)
 				WHERE ID(obj) = {objectID}
-				MERGE (n)<-[h:HAS]-(u)
+				MERGE (n)<-[h:REGISTERED]-(u)
 				RETURN ID(h) AS id
 				`
 
@@ -222,7 +222,7 @@ func (service notificationService) CreateNotificationSubcriptionList(objectID in
 				MATCH (u:User) WHERE ID(u) IN {userIDs}
 				MATCH(obj)-[g:GENERATE]->(n:Notification)
 				WHERE ID(obj) = {objectID}
-				MERGE (n)<-[h:HAS]-(u)
+				MERGE (n)<-[h:REGISTERED]-(u)
 				ON CREATE h.created_at = TIMESTAMP(), h.seen=0
 				RETURN ID(u) AS id
 				`
@@ -255,7 +255,7 @@ func (service notificationService) CreateNotificationSubcriptionList(objectID in
 func (service notificationService) SeenNotification(notificationID int64, userID int64) (bool, error) {
 	stmt := `
 				MATCH (u:User) WHERE ID(u) = {userID}
-				MATCH(u)-[h:HAS]->(n:Notification)
+				MATCH(u)-[h:REGISTERED]->(n:Notification)
 				WHERE ID(n) = {notificationID} AND h.seen_at = 0
 				SET h.seen_at = TIMESTAMP()
 				`
@@ -278,7 +278,7 @@ func (service notificationService) SeenNotification(notificationID int64, userID
 
 func (service notificationService) CheckSeenNotification(notificationID int64, userID int64) (bool, error) {
 	stmt := `
-				MATCH(u:User)-[h:HAS]->(n:Notification)
+				MATCH(u:User)-[h:REGISTERED]->(n:Notification)
 				WHERE ID(n) = {notificationID} AND ID(u) = {userID}
 				RETURN h.seen_at AS seen_at
 				`
@@ -334,7 +334,7 @@ func (service notificationService) UpdateFollowNotification(userID int64, object
 				n.last_user= apoc.convert.toJson(u1{id:ID(u1),username: u1.username, full_name: u1.full_name, avatar: u1.avatar})
 			WITH u,n
 			OPTIONAL MATCH (u1:User)-[:FOLLOW]->(u)
-			MERGE (n)<-[h:HAS]-(u1)
+			MERGE (n)<-[h:REGISTERED]-(u1)
 			ON CREATE SET h.created_at = TIMESTAMP(), h.seen_at = 0
 			ON MATCH SET h.seen_at = 0
 			RETURN
@@ -395,7 +395,7 @@ func (service notificationService) UpdateCommentNotification(postID int64) (mode
 				n.last_post= apoc.convert.toJson(p{id:ID(p),message:p.message,photo:p.photo,owner:owner{id:ID(owner),username:owner.username,full_name:owner.full_name,avatar:owner.avatar}})
 			WITH u,p,n
 			OPTIONAL MATCH (u1:User)-[:FOLLOW]->(p)
-			MERGE (n)<-[h:HAS]-(u1)
+			MERGE (n)<-[h:REGISTERED]-(u1)
 			ON CREATE SET h.created_at = TIMESTAMP(), h.seen_at = 0
 			ON MATCH SET h.seen_at = 0
 			RETURN
@@ -457,7 +457,7 @@ func (service notificationService) UpdateLikeNotification(postID int64) (models.
 			n.updated_at = l.created_at
 			WITH u,l,p,n
 			OPTIONAL MATCH (u1:User)-[:FOLLOW]->(p)
-			MERGE (n)<-[h:HAS]-(u1)
+			MERGE (n)<-[h:REGISTERED]-(u1)
 			ON CREATE SET h.created_at = TIMESTAMP(), h.seen_at = 0
 			ON MATCH SET h.seen_at = 0
 			RETURN
@@ -614,7 +614,7 @@ func (service notificationService) UpdateMentionNotification(postID int64, userI
 				n.last_post= apoc.convert.toJson(p{id:ID(p),message:p.message,photo:p.photo,owner:owner{id:ID(owner),username:owner.username,full_name:owner.full_name,avatar:owner.avatar}})
 			WITH u,p,n
 			OPTIONAL MATCH (u1:User)-[:FOLLOW]->(p)
-			MERGE (n)<-[h:HAS]-(u1)
+			MERGE (n)<-[h:REGISTERED]-(u1)
 			ON CREATE SET h.created_at = TIMESTAMP(), h.seen_at = 0
 			ON MATCH SET h.seen_at = 0
 			RETURN
@@ -676,7 +676,7 @@ func (service notificationService) UpdateLikedPostNotification(userID int64) (mo
 				n.updated_at = l.created_at
 				WITH u,l,p,n
 				OPTIONAL MATCH (u1:User)-[:FOLLOW]->(u)
-				MERGE (n)<-[h:HAS]-(u1)
+				MERGE (n)<-[h:REGISTERED]-(u1)
 				ON CREATE SET h.created_at = TIMESTAMP(), h.seen_at = 0
 				ON MATCH SET h.seen_at = 0
 				RETURN

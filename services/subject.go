@@ -171,7 +171,7 @@ func (service subjectService) GetAll(params helpers.ParamsGetAll) ([]models.Subj
 // 				SET s.created_at = TIMESTAMP(), f.created_at = TIMESTAMP()
 // 				WITH s,u
 // 				MATCH(u1:User)-[:FOLLOW]->(u)
-// 				CREATE (s)-[g:GENERATE]->(n:Notification)<-[:HAS]-(u1)
+// 				CREATE (s)-[g:GENERATE]->(n:Notification)<-[:REGISTERED]-(u1)
 // 				SET n.action = {action}, g.created_at = TIMESTAMP(), n.updated_at = TIMESTAMP()
 // 				RETURN ID(s) as id
 // 		  	`
@@ -194,7 +194,7 @@ func (service subjectService) GetAll(params helpers.ParamsGetAll) ([]models.Subj
 // 				SET s.created_at = TIMESTAMP(), f.created_at = TIMESTAMP()
 // 				WITH s,u
 // 				MATCH(u1:User)-[:FOLLOW]->(u)
-// 				CREATE (s)-[g:GENERATE]->(n:Notification)<-[:HAS]-(u1)
+// 				CREATE (s)-[g:GENERATE]->(n:Notification)<-[:REGISTERED]-(u1)
 // 				SET n.action = {action}, g.created_at = TIMESTAMP(), n.updated_at = TIMESTAMP()
 // 				RETURN ID(s) as id
 // 		  	`
@@ -342,7 +342,7 @@ func (service subjectService) UpdateFromTLU(semesterCode string) (bool, error) {
         s.status =1
       WITH s
       MATCH(semester:Semester) where semester.code = "%s"
-      MERGE (semester)-[h:HAS]->(s)
+      MERGE (semester)-[h:INCLUDE]->(s)
       ON CREATE SET h.created_at = timestamp()
 			`, configs.SURLGetSubjectListBySemesterCode+semesterCode, semesterCode)
 	// params := map[string]interface{}{

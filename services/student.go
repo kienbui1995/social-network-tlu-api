@@ -2,6 +2,7 @@ package services
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/jmcvetta/neoism"
 	"github.com/kienbui1995/social-network-tlu-api/configs"
@@ -43,7 +44,7 @@ func (service studentService) GetAll(params helpers.ParamsGetAll, classCode int6
 				SKIP {skip}
 				LIMIT {limit}
 				RETURN
-					collect(s{id:ID(s),.*}) AS student
+					collect(s{id:ID(s), .*}) AS students
 
 
 		  	`, "s."+params.Sort)
@@ -51,11 +52,9 @@ func (service studentService) GetAll(params helpers.ParamsGetAll, classCode int6
 	paramsQuery := map[string]interface{}{
 		"skip":      params.Skip,
 		"limit":     params.Limit,
-		"classCode": classCode,
+		"classCode": strconv.FormatInt(classCode, 10),
 	}
-	res := []struct {
-		Student []models.Student `json:"student"`
-	}{}
+	res := []struct{ Students []models.Student }{}
 	cq := neoism.CypherQuery{
 		Statement:  stmt,
 		Parameters: paramsQuery,
@@ -65,8 +64,9 @@ func (service studentService) GetAll(params helpers.ParamsGetAll, classCode int6
 	if err != nil {
 		return nil, err
 	}
+	// fmt.Printf("res: %v\n", res)
 	if len(res) > 0 {
-		return res[0].Student, nil
+		return res[0].Students, nil
 	}
 	return nil, nil
 }
@@ -173,7 +173,7 @@ func (service studentService) GetAll(params helpers.ParamsGetAll, classCode int6
 // 				SET s.created_at = TIMESTAMP(), f.created_at = TIMESTAMP()
 // 				WITH s,u
 // 				MATCH(u1:User)-[:FOLLOW]->(u)
-// 				CREATE (s)-[g:GENERATE]->(n:Notification)<-[:HAS]-(u1)
+// 				CREATE (s)-[g:GENERATE]->(n:Notification)<-[:REGISTERED]-(u1)
 // 				SET n.action = {action}, g.created_at = TIMESTAMP(), n.updated_at = TIMESTAMP()
 // 				RETURN ID(s) as id
 // 		  	`
@@ -196,7 +196,7 @@ func (service studentService) GetAll(params helpers.ParamsGetAll, classCode int6
 // 				SET s.created_at = TIMESTAMP(), f.created_at = TIMESTAMP()
 // 				WITH s,u
 // 				MATCH(u1:User)-[:FOLLOW]->(u)
-// 				CREATE (s)-[g:GENERATE]->(n:Notification)<-[:HAS]-(u1)
+// 				CREATE (s)-[g:GENERATE]->(n:Notification)<-[:REGISTERED]-(u1)
 // 				SET n.action = {action}, g.created_at = TIMESTAMP(), n.updated_at = TIMESTAMP()
 // 				RETURN ID(s) as id
 // 		  	`

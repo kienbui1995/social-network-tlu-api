@@ -9,7 +9,8 @@ type Account struct {
 	ID       int64  `json:"id"`
 	Username string `json:"username" valid:"required"`
 	Password string `json:"password" valid:"required"`
-	Role     int    `json:"role"`
+	Role     int    `json:"role,omitempty"`
+	Code     string `json:"code,omitemtpy"`
 	Device   string `json:"device" valid:"required"`
 }
 
