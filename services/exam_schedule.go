@@ -23,7 +23,7 @@ type ExamScheduleServiceInterface interface {
 	UpdateFromTLU(semesterCode string) (bool, error)
 
 	// A Student
-	GetAllByStudent(params helpers.ParamsGetAll, semesterCode string, studentCode string) ([]models.Class, error)
+	GetAllByStudent(params helpers.ParamsGetAll, semesterCode string, studentCode string) ([]models.ExamSchedule, error)
 }
 
 // examScheduleService struct
@@ -76,27 +76,24 @@ func (service examScheduleService) GetAll(params helpers.ParamsGetAll) ([]models
 // GetAllByStudent func
 // helpers.ParamsGetAll string
 // []models.Class error
-func (service examScheduleService) GetAllByStudent(params helpers.ParamsGetAll, semesterCode string, studentCode string) ([]models.Class, error) {
+func (service examScheduleService) GetAllByStudent(params helpers.ParamsGetAll, semesterCode string, studentCode string) ([]models.ExamSchedule, error) {
 	var stmt string
 	stmt = fmt.Sprintf(`
-		MATCH (sub:Subject)<-[:TEACH_ABOUT]-(c:Class)<-[e:ENROLL]-(s:Student),
-					(c)-[:IN]->(r:Room),
-					(c)<-[:TEACH]-(t:Teacher),
-					(c)<-[:OPENED]-(semester:Semester)
+		MATCH (s:Student)-[:ATTEND]->(exam:ExamSchedule)<-[:ORGANIZE]-(semester:Semester),
+					(exam)--(sub:Subject),
+					(exam)--(r:Room)
 		WHERE toLower(s.code) = toLower({studentCode}) AND semester.code = {semesterCode}
 		WITH
-		c{
-		id: ID(c),.*,
+		exam{
+		id: ID(exam),.*,
 		subject: sub{id:ID(sub),.code,.name},
-		room: r{id:ID(r),.code},
-		teacher: t{id:ID(t),.code,name: t.last_name+" "+t.first_name}
-		} AS class
+		room: r{id:ID(r),.code}
+		} AS exam_schedule
 		ORDER BY %s
 		SKIP {skip}
 		LIMiT {limit}
-		return collect(class) AS classes
-
-		  	`, "class."+params.Sort)
+		return collect(exam_schedule) AS exam_schedules
+		  	`, "exam_schedule."+params.Sort)
 
 	paramsQuery := map[string]interface{}{
 		"skip":         params.Skip,
@@ -105,7 +102,7 @@ func (service examScheduleService) GetAllByStudent(params helpers.ParamsGetAll, 
 		"semesterCode": semesterCode,
 	}
 	res := []struct {
-		Classes []models.Class `json:"classes"`
+		ExamSchedules []models.ExamSchedule `json:"exam_schedules"`
 	}{}
 	// res := []interface{}{}
 	cq := neoism.CypherQuery{
@@ -113,14 +110,14 @@ func (service examScheduleService) GetAllByStudent(params helpers.ParamsGetAll, 
 		Parameters: paramsQuery,
 		Result:     &res,
 	}
-	fmt.Printf("cq: %v\n", cq)
+	// fmt.Printf("cq: %v\n", cq)
 	err := conn.Cypher(&cq)
 	if err != nil {
 		return nil, err
 	}
 	if len(res) > 0 {
-		fmt.Printf("res: %v\n", res)
-		return res[0].Classes, nil
+		// fmt.Printf("res: %v\n", res)
+		return res[0].ExamSchedules, nil
 	}
 	return nil, nil
 }
@@ -391,7 +388,11 @@ func (service examScheduleService) UpdateFromTLU(semesterCode string) (bool, err
       MATCH(semester:Semester{code:"%s"})
       MATCH(s:Student{code:toString(schedule.masv)})
       MATCH(sub:Subject{code:toString(schedule.mahp)})
-      MERGE(r:Room{code:toString(schedule.maph)})
+			WITH CASE schedule.maph
+						WHEN NULL THEN ""
+						ELSE toString(schedule.maph)
+			END AS maph, schedule
+      MERGE(r:Room{code:maph})
       MERGE(r)<-[:EXAM_AT]-(exam:ExamSchedule{day:toString(schedule.ngay),exam_time:toString(schedule.giothi)})-[:EXAM_FOR]->(sub)
       ON CREATE SET
         exam.status =1,

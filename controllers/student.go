@@ -254,3 +254,46 @@ func (controller StudentController) UpdateFromTLU(c *gin.Context) {
 
 	helpers.ResponseSuccessJSON(c, 1, "Update class successful", nil)
 }
+
+// GetStudentsEnrolledClass func
+func (controller StudentController) GetStudentsEnrolledClass(c *gin.Context) {
+	code, errParseInt := strconv.ParseInt(c.Query("class_code"), 10, 64)
+	if errParseInt != nil {
+		helpers.ResponseBadRequestJSON(c, configs.EcParam, "Invalid params")
+		return
+	}
+
+	//check permisson
+	myUserID, errGetUserIDFromToken := GetUserIDFromToken(c.Request.Header.Get("token"))
+	if errGetUserIDFromToken != nil {
+		helpers.ResponseAuthJSON(c, 200, "Permissions error")
+		return
+	}
+	role, errGetRoleFromUserID := GetRoleFromUserID(myUserID)
+	if errGetRoleFromUserID != nil {
+		helpers.ResponseAuthJSON(c, 200, "Permissions error")
+		fmt.Printf("GetRoleFromUserID controller: %s\n", errGetRoleFromUserID.Error())
+		return
+	}
+	if role != configs.IStudentRole && role != configs.IAdminRole && role != configs.ISupervisorRole && role != configs.ITeacherRole {
+		helpers.ResponseAuthJSON(c, 200, "Permissions error")
+		return
+	}
+	params := helpers.ParamsGetAll{}
+	params.Skip, _ = strconv.Atoi(c.DefaultQuery("skip", configs.SSkip))
+	params.Limit, _ = strconv.Atoi(c.DefaultQuery("limit", configs.SLimit))
+	// params.Type = c.DefaultQuery("type", configs.SPost)
+	// if (params.Type != configs.SPostPhoto && params.Type != configs.SPostStatus) && params.Type != configs.SPost {
+	// 	helpers.ResponseBadRequestJSON(c, configs.EcParam, "Invalid parameter: type")
+	// 	return
+	// }
+	params.Sort = c.DefaultQuery("sort", configs.SSort)
+	params.Sort, _ = helpers.ConvertSort(params.Sort)
+	students, errGetAll := controller.Service.GetStudentsEnrolledClass(params, code)
+	if errGetAll != nil {
+		helpers.ResponseServerErrorJSON(c)
+		fmt.Printf("GetAll service: %s\n", errGetAll.Error())
+		return
+	}
+	helpers.ResponseEntityListJSON(c, 1, "Get student list successful", students, params, len(students))
+}

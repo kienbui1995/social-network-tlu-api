@@ -290,11 +290,11 @@ func (controller ExamScheduleController) GetAllByStudent(c *gin.Context) {
 	// }
 	params.Sort = c.DefaultQuery("sort", configs.SSort)
 	params.Sort, _ = helpers.ConvertSort(params.Sort)
-	classes, errGetAll := controller.Service.GetAllByStudent(params, semesterCode, studentCode)
+	exam_schedules, errGetAll := controller.Service.GetAllByStudent(params, semesterCode, studentCode)
 	if errGetAll != nil {
 		helpers.ResponseServerErrorJSON(c)
 		fmt.Printf("GetAll service: %s\n", errGetAll.Error())
 		return
 	}
-	helpers.ResponseEntityListJSON(c, 1, "Get class list successful", classes, params, len(classes))
+	helpers.ResponseEntityListJSON(c, 1, "Get class list successful", exam_schedules, params, len(exam_schedules))
 }

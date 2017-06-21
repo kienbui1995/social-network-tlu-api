@@ -11,15 +11,18 @@ import (
 
 // SemesterServiceInterface include method list
 type SemesterServiceInterface interface {
-	GetAll(params helpers.ParamsGetAll) ([]models.Semester, error)
+	// User
+	GetAllOfStudent(params helpers.ParamsGetAll, studentCode string) ([]models.Semester, error)
 	// Get(semesterID int64) (models.Semester, error)
 	// Delete(semesterID int64) (bool, error)
 	// Create(semester models.Semester) (int64, error)
 	// Update(semester models.Semester) (models.Semester, error)
 	// CheckExistSemester(semesterID int64) (bool, error)
 
+	// Only Admin
 	//update from TLU
 	UpdateFromTLU(year string) (bool, error)
+	GetAll(params helpers.ParamsGetAll) ([]models.Semester, error)
 }
 
 // semesterService struct
@@ -32,27 +35,24 @@ func NewSemesterService() SemesterServiceInterface {
 
 // GetAll func
 // helpers.ParamsGetAll
-// models.Post error
+// []models.Semester error
 func (service semesterService) GetAll(params helpers.ParamsGetAll) ([]models.Semester, error) {
 	var stmt string
 	stmt = fmt.Sprintf(`
-		    MATCH(s:Semester)
-				with s
-				ORDER BY %s
-				SKIP {skip}
-				LIMIT {limit}
-				RETURN
-					collect(s{id:ID(s),.*}) AS semester
-
-
-		  	`, "s."+params.Sort)
+		MATCH (se:Semester)
+		WITH se{id:ID(se),.* } AS semester
+		ORDER BY %s
+		SKIP {skip}
+		LIMIT {limit}
+		RETURN collect(semester) AS semesters
+		  	`, "semester."+params.Sort)
 
 	paramsQuery := map[string]interface{}{
 		"skip":  params.Skip,
 		"limit": params.Limit,
 	}
 	res := []struct {
-		Semester []models.Semester `json:"semester"`
+		Semesters []models.Semester `json:"semesters"`
 	}{}
 	cq := neoism.CypherQuery{
 		Statement:  stmt,
@@ -64,7 +64,7 @@ func (service semesterService) GetAll(params helpers.ParamsGetAll) ([]models.Sem
 		return nil, err
 	}
 	if len(res) > 0 {
-		return res[0].Semester, nil
+		return res[0].Semesters, nil
 	}
 	return nil, nil
 }
@@ -363,4 +363,43 @@ func (service semesterService) UpdateFromTLU(year string) (bool, error) {
 	return true, nil
 
 	// return false, errors.New("Dont' update semester")
+}
+
+// GetAllOfStudent func
+// helpers.ParamsGetAll
+// models.Post error
+func (service semesterService) GetAllOfStudent(params helpers.ParamsGetAll, studentCode string) ([]models.Semester, error) {
+	var stmt string
+	stmt = fmt.Sprintf(`
+		MATCH(s:Student) WHERE toLower(s.code) = toLower({studentCode})
+		MATCH (se:Semester) WHERE exists((se)--(:Class)--(s))
+		WITH se{id:ID(se),.* } AS semester
+		ORDER BY %s
+		SKIP {skip}
+		LIMIT {limit}
+		RETURN collect(semester) AS semesters
+		  	`, "semester."+params.Sort)
+
+	paramsQuery := map[string]interface{}{
+		"studentCode": studentCode,
+		"skip":        params.Skip,
+		"limit":       params.Limit,
+	}
+	res := []struct {
+		Semesters []models.Semester `json:"semesters"`
+	}{}
+	cq := neoism.CypherQuery{
+		Statement:  stmt,
+		Parameters: paramsQuery,
+		Result:     &res,
+	}
+	fmt.Printf("cq: %v\n", cq)
+	err := conn.Cypher(&cq)
+	if err != nil {
+		return nil, err
+	}
+	if len(res) > 0 {
+		return res[0].Semesters, nil
+	}
+	return nil, nil
 }

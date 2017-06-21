@@ -392,7 +392,7 @@ func (service classService) UpdateFromTLU(semesterCode string) (bool, error) {
       MATCH(t:Teacher{code:toString(lop.Magv)})
       MATCH(sub:Subject{code:toString(lop.Mahp)})
       MERGE(r:Room{code:toString(lop.Maph)})
-      MERGE(c:Class{code:toString(lop.Malop)})
+      MERGE(r)<-[:IN]-(c:Class{code:toString(lop.Malop), symbol:toString(lop.Kyhieu)})<-[:TEACH]-(t)
       ON CREATE SET
         c.code =toString(lop.Malop),
         c.symbol=toString(lop.Kyhieu),
@@ -402,9 +402,7 @@ func (service classService) UpdateFromTLU(semesterCode string) (bool, error) {
         c.finish_at = toString(lop.Giokt),
         c.status =1,
         c.created_at = timestamp()
-      MERGE (t)-[:TEACH]->(c)
-			MERGE (c)-[:TEACH_ABOUT]->(sub)
-      MERGE (c)-[:IN]->(r)
+	  	MERGE (c)-[:TEACH_ABOUT]->(sub)
       MERGE (semester)-[:OPENED]->(c)
 			`, configs.SURLGetClassListBySemesterCode+semesterCode, semesterCode)
 	// params := map[string]interface{}{

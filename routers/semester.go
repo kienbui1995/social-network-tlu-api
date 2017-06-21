@@ -14,4 +14,10 @@ func AddRoutesSemesters(r *gin.RouterGroup) {
 		routes.PUT("", controller.UpdateFromTLU)
 		routes.GET("", controller.GetAll)
 	}
+	routes2 := r.Group("/students")
+	{
+
+		routes2.GET("/:id/semesters", controller.GetSemesterOfStudent)
+	}
+
 }

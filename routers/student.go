@@ -14,4 +14,8 @@ func AddRoutesStudents(r *gin.RouterGroup) {
 		routes.PUT("", controller.UpdateFromTLU)
 		routes.GET("", controller.GetAll)
 	}
+	routes2 := r.Group("/classes")
+	{
+		routes2.GET("/:id/students", controller.GetStudentsEnrolledClass)
+	}
 }

@@ -21,6 +21,8 @@ type StudentServiceInterface interface {
 
 	//update from TLU
 	UpdateFromTLU(classCode string) (bool, error)
+
+	GetStudentsEnrolledClass(params helpers.ParamsGetAll, classCode int64) ([]models.Student, error)
 }
 
 // studentService struct
@@ -37,8 +39,7 @@ func NewStudentService() StudentServiceInterface {
 func (service studentService) GetAll(params helpers.ParamsGetAll, classCode int64) ([]models.Student, error) {
 	var stmt string
 	stmt = fmt.Sprintf(`
-		    MATCH(s:Student)-[:ENROLL]->(c:Class)
-				WHERE c.code = {classCode}
+		    MATCH(s:Student)
 				with s
 				ORDER BY %s
 				SKIP {skip}
@@ -364,4 +365,46 @@ func (service studentService) UpdateFromTLU(classCode string) (bool, error) {
 	return true, nil
 
 	// return false, errors.New("Dont' update semester")
+}
+
+// GetStudentsEnrolledClass func
+// helpers.ParamsGetAll int64
+// []models.student error
+func (service studentService) GetStudentsEnrolledClass(params helpers.ParamsGetAll, classCode int64) ([]models.Student, error) {
+	var stmt string
+	stmt = fmt.Sprintf(`
+		    MATCH(s:Student)-[:ENROLL]->(c:Class)
+				WHERE c.code = {classCode}
+				with s
+				ORDER BY %s
+				SKIP {skip}
+				LIMIT {limit}
+				RETURN
+					collect(s{id:ID(s), .*}) AS students
+
+
+		  	`, "s."+params.Sort)
+
+	paramsQuery := map[string]interface{}{
+		"skip":      params.Skip,
+		"limit":     params.Limit,
+		"classCode": strconv.FormatInt(classCode, 10),
+	}
+	res := []struct {
+		Students []models.Student `json:"students"`
+	}{}
+	cq := neoism.CypherQuery{
+		Statement:  stmt,
+		Parameters: paramsQuery,
+		Result:     &res,
+	}
+	err := conn.Cypher(&cq)
+	if err != nil {
+		return nil, err
+	}
+	// fmt.Printf("res: %v\n", res)
+	if len(res) > 0 {
+		return res[0].Students, nil
+	}
+	return nil, nil
 }
