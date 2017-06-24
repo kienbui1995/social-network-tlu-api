@@ -14,14 +14,11 @@ func AddRoutesGroupMemberships(r *gin.RouterGroup) {
 		routes2.GET("/:id/members", controller.GetAll)          // get memberships (members)
 		routes2.POST("/:id/members", controller.Create)         // join public group/request when privacy is private
 		routes2.DELETE("/:id/members", controller.DeleteByUser) // out group
-
 	}
 
 	routes := r.Group("/group_memberships")
 	{
 		routes.PUT("/:id", controller.Update)    // make/remove admin/block member by admin
 		routes.DELETE("/:id", controller.Delete) // user removed by admin
-
 	}
-
 }

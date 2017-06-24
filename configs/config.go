@@ -4,7 +4,7 @@ import "time"
 
 //Const config system
 const (
-	ServerDB = "tlu.cloudapp.net"
+	ServerDB = "localhost"
 	// /neo4jURL = "Bolt://neo4j:tlis2016@tlu.cloudapp.net:7687"
 	URLDB   = "http://neo4j:madawg00@" + ServerDB + ":7474/db/data/"
 	APIPort = "8080"
@@ -23,11 +23,11 @@ const (
 	MailKey     = ""
 )
 
-// Twilio const
-const (
-	TwilioSID       = "1"
-	TwilioAPISecret = "@"
-)
+//// Twilio const
+//const (
+//	TwilioSID       = "1"
+//	TwilioAPISecret = "@"
+//)
 
 // Sort const
 const (
@@ -65,22 +65,24 @@ const (
 	SPrivateGroup = "private"
 )
 
-// const role member in groupID
-const (
-	IRoleMember  = 1
-	SRoleMember  = "member"
-	IRoleAdmin   = 2
-	SRoleAdmin   = "admin"
-	IRoleCreator = 3
-	SCreator     = "creator"
-	IRoleBlock   = 4
-	SRoleBlock   = "block"
-)
+// // const role member in groupID
+// const (
+// 	IRoleMember  = 1
+// 	SRoleMember  = "member"
+// 	IRoleAdmin   = 2
+// 	SRoleAdmin   = "admin"
+// 	IRoleCreator = 3
+// 	SRoleCreator = "creator"
+// 	IRoleBlock   = 4
+// 	SRoleBlock   = "block"
+// )
 
 // Const status group membership request
 const (
 	IPending    = 1
 	SPending    = "pending"
+	ICreator    = 3
+	SCreator    = "creator"
 	IMember     = 4
 	SMember     = "member"
 	IBlocked    = 5

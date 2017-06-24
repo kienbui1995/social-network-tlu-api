@@ -10,7 +10,7 @@ type Account struct {
 	Username string `json:"username" valid:"required"`
 	Password string `json:"password" valid:"required"`
 	Role     int    `json:"role,omitempty"`
-	Code     string `json:"code,omitemtpy"`
+	Code     string `json:"code,omitempty"`
 	Device   string `json:"device" valid:"required"`
 }
 

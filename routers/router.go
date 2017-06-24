@@ -28,6 +28,7 @@ func InitRoutes() *gin.Engine {
 			AddRoutesPosts(v1)
 			AddRoutesComments(v1)
 			AddRoutesGroups(v1)
+			AddRoutesChannels(v1)
 			AddRoutesGroupMemberships(v1)
 			AddRoutesNotifications(v1)
 			AddRoutesSemesters(v1)

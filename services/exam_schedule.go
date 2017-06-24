@@ -410,7 +410,7 @@ func (service examScheduleService) UpdateFromTLU(semesterCode string) (bool, err
 		// // Parameters: params,
 		// Result: &res,
 	}
-	// fmt.Printf("cq: $v\n", cq)
+	fmt.Printf("semester: %v\n", semesterCode)
 	err := conn.Cypher(&cq)
 	if err != nil {
 		return false, err

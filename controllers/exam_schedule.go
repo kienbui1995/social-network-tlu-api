@@ -257,6 +257,46 @@ func (controller ExamScheduleController) UpdateFromTLU(c *gin.Context) {
 	helpers.ResponseSuccessJSON(c, 1, "Update class successful", nil)
 }
 
+// UpdateFromTLU2 func
+func (controller ExamScheduleController) UpdateFromTLU2(c *gin.Context) {
+	semester, _ := strconv.ParseInt(c.Query("semester_code"), 10, 64)
+
+	// get myUserID from token
+	myUserID, errGetUserIDFromToken := GetUserIDFromToken(c.Request.Header.Get("token"))
+	if errGetUserIDFromToken != nil || myUserID < 0 {
+		helpers.ResponseAuthJSON(c, configs.EcPermission, "Permissions error")
+		return
+	}
+	// check role
+	role, errGetRoleFromUserID := GetRoleFromUserID(myUserID)
+	if errGetRoleFromUserID != nil {
+		helpers.ResponseServerErrorJSON(c)
+		fmt.Printf("GetRoleFromUserID controller: %s\n", errGetRoleFromUserID.Error())
+		return
+	}
+	if role != configs.IAdminRole {
+		helpers.ResponseAuthJSON(c, configs.EcPermission, "Permissions error")
+		return
+	}
+	// var newPost models.Post
+	// if errBindJSON := c.BindJSON(&newPost); errBindJSON != nil {
+	// 	helpers.ResponseBadRequestJSON(c, configs.EcParam, "BindJSON: "+errBindJSON.Error())
+	// 	return
+	// }
+	for index := fromSemester; index <= toSemester; index++ {
+
+		_, errUpdate := controller.Service.UpdateFromTLU(strconv.FormatInt(index, 10))
+
+		if errUpdate != nil {
+			fmt.Printf("UpdateFromTLU service: %s\n", errUpdate.Error())
+			// return
+		}
+
+	}
+
+	helpers.ResponseSuccessJSON(c, 1, "Update class successful", nil)
+}
+
 // Student
 
 // GetAllByStudent func
@@ -290,11 +330,11 @@ func (controller ExamScheduleController) GetAllByStudent(c *gin.Context) {
 	// }
 	params.Sort = c.DefaultQuery("sort", configs.SSort)
 	params.Sort, _ = helpers.ConvertSort(params.Sort)
-	exam_schedules, errGetAll := controller.Service.GetAllByStudent(params, semesterCode, studentCode)
+	examSchedules, errGetAll := controller.Service.GetAllByStudent(params, semesterCode, studentCode)
 	if errGetAll != nil {
 		helpers.ResponseServerErrorJSON(c)
 		fmt.Printf("GetAll service: %s\n", errGetAll.Error())
 		return
 	}
-	helpers.ResponseEntityListJSON(c, 1, "Get class list successful", exam_schedules, params, len(exam_schedules))
+	helpers.ResponseEntityListJSON(c, 1, "Get class list successful", examSchedules, params, len(examSchedules))
 }
