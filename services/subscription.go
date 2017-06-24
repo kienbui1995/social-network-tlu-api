@@ -33,8 +33,8 @@ func (service subscriptionService) CreateSubscription(fromID int64, toID int64) 
 	stmt := `
 	MATCH(from:User) WHERE ID(from) = {fromid}
   MATCH (to) WHERE ID(to) = {toid}
-  CREATE UNIQUE (from)-[f:FOLLOW{created_at:TIMESTAMP()}]->(to)
-	SET from.followings = from.followings+1, to.followers = to.followers+1
+  MERGE (from)-[f:FOLLOW]->(to)
+	ON CREATE SET from.followings = from.followings+1, to.followers = to.followers+1,f.created_at=TIMESTAMP()
  	RETURN ID(f) as id
 	`
 	res := []struct {
