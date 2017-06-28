@@ -55,7 +55,7 @@ func (service channelService) GetAll(params helpers.ParamsGetAll, myUserID int64
 				`, "channel."+params.Sort)
 
 	paramsQuery := map[string]interface{}{
-		"myuserid": myUserID,
+		"myUserID": myUserID,
 		"skip":     params.Skip,
 		"limit":    params.Limit,
 	}
@@ -137,7 +137,7 @@ func (service channelService) Create(channel models.Channel, myUserID int64) (in
 	}
 	stmt := `
 			MATCH(u:User) WHERE ID(u) = {myUserID}
-			CREATE (c:Channel{{props}})<-[r:MANAGE]-(u)
+			CREATE (c:Channel{props})<-[r:MANAGE]-(u)
 			SET c.created_at = TIMESTAMP()
 			RETURN ID(c) as id
 			`
@@ -241,8 +241,8 @@ func (service channelService) CheckUserRole(channelID int64, userID int64) (int,
 	MATCH (c:Channel)	WHERE ID(c)= {channelID}
 	MATCH (u:User) WHERE ID(u) = {userID}
 	RETURN
-		exists((u)-[:MANAGE]->(g)) AS is_admin,
-		exists((u)-[:FOLLOW]->(g)) AS is_followed,
+		exists((u)-[:MANAGE]->(c)) AS is_admin,
+		exists((u)-[:FOLLOW]->(c)) AS is_followed
 	`
 	paramsQuery := neoism.Props{
 		"channelID": channelID,

@@ -283,15 +283,12 @@ func (controller ExamScheduleController) UpdateFromTLU2(c *gin.Context) {
 	// 	helpers.ResponseBadRequestJSON(c, configs.EcParam, "BindJSON: "+errBindJSON.Error())
 	// 	return
 	// }
-	for index := fromSemester; index <= toSemester; index++ {
 
-		_, errUpdate := controller.Service.UpdateFromTLU(strconv.FormatInt(index, 10))
+	_, errUpdate := controller.Service.UpdateFromTLU(strconv.FormatInt(semester, 10))
 
-		if errUpdate != nil {
-			fmt.Printf("UpdateFromTLU service: %s\n", errUpdate.Error())
-			// return
-		}
-
+	if errUpdate != nil {
+		fmt.Printf("UpdateFromTLU service: %s\n", errUpdate.Error())
+		// return
 	}
 
 	helpers.ResponseSuccessJSON(c, 1, "Update class successful", nil)

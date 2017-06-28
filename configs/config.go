@@ -4,7 +4,7 @@ import "time"
 
 //Const config system
 const (
-	ServerDB = "localhost"
+	ServerDB = "tlu.cloudapp.net"
 	// /neo4jURL = "Bolt://neo4j:tlis2016@tlu.cloudapp.net:7687"
 	URLDB   = "http://neo4j:madawg00@" + ServerDB + ":7474/db/data/"
 	APIPort = "8080"
