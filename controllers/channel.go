@@ -351,3 +351,131 @@ func (controller ChannelController) GetFollowers(c *gin.Context) {
 	helpers.ResponseEntityListJSON(c, 1, "Get followers of channel successful", followers, params, len(followers))
 	return
 }
+
+// CreateFollower func
+func (controller ChannelController) CreateFollower(c *gin.Context) {
+	channelID, errParseInt := strconv.ParseInt(c.Param("id"), 10, 64)
+	if errParseInt != nil {
+		helpers.ResponseBadRequestJSON(c, configs.EcParamUserID, "Invalid channelID")
+		return
+	}
+
+	// get my userid
+	myUserID, errGetUserIDFromToken := GetUserIDFromToken(c.Request.Header.Get("token"))
+	if errGetUserIDFromToken != nil {
+		helpers.ResponseServerErrorJSON(c)
+		fmt.Printf("GetUserIDFromToken controller: %s\n", errGetUserIDFromToken.Error())
+		return
+	}
+	// check exist follow channel
+	IDFollow, errCheckExistFollowChannel := controller.Service.CheckExistFollowChannel(channelID, myUserID)
+	if errCheckExistFollowChannel != nil {
+		helpers.ResponseServerErrorJSON(c)
+		fmt.Printf("CheckExistFollowChannel service: %s\n", errCheckExistFollowChannel.Error())
+		return
+	}
+	if IDFollow >= 0 {
+		helpers.ResponseNotFoundJSON(c, configs.EcExisObject, "Exist follow channel")
+		return
+	}
+
+	created, errCreateFollower := controller.Service.CreateFollower(channelID, myUserID)
+
+	if errCreateFollower == nil && created == true {
+		helpers.ResponseCreatedJSON(c, 1, "Create follow channel successful", nil)
+		return
+	}
+	helpers.ResponseServerErrorJSON(c)
+	if errCreateFollower != nil {
+		fmt.Printf("CreateFollower services: %s\n", errCreateFollower.Error())
+	} else {
+		fmt.Printf("CreateFollower services: Don't create follow channel")
+	}
+}
+
+// DeleteFollower func
+func (controller ChannelController) DeleteFollower(c *gin.Context) {
+	channelID, errParseInt := strconv.ParseInt(c.Param("id"), 10, 64)
+	if errParseInt != nil {
+		helpers.ResponseBadRequestJSON(c, configs.EcParamUserID, "Invalid channelID")
+		return
+	}
+
+	// get my userid
+	myUserID, errGetUserIDFromToken := GetUserIDFromToken(c.Request.Header.Get("token"))
+	if errGetUserIDFromToken != nil {
+		helpers.ResponseServerErrorJSON(c)
+		fmt.Printf("GetUserIDFromToken controller: %s\n", errGetUserIDFromToken.Error())
+		return
+	}
+	// check exist follow channel
+	IDFollow, errCheckExistFollowChannel := controller.Service.CheckExistFollowChannel(channelID, myUserID)
+	if errCheckExistFollowChannel != nil {
+		helpers.ResponseServerErrorJSON(c)
+		fmt.Printf("CheckExistFollowChannel service: %s\n", errCheckExistFollowChannel.Error())
+		return
+	}
+	if IDFollow < 0 {
+		helpers.ResponseNotFoundJSON(c, configs.EcExisObject, "No Exist follow channel")
+		return
+	}
+
+	deleted, errDeleteFollower := controller.Service.DeleteFollower(IDFollow)
+	if errDeleteFollower == nil && deleted == true {
+		helpers.ResponseNoContentJSON(c)
+		return
+	}
+	helpers.ResponseServerErrorJSON(c)
+	if errDeleteFollower != nil {
+		fmt.Printf("DeleteFollower services: %s\n", errDeleteFollower.Error())
+	} else {
+		fmt.Printf("DeleteFollower services: Don't delete create follow channel")
+	}
+}
+
+// GetFollowedChannels func
+func (controller ChannelController) GetFollowedChannels(c *gin.Context) {
+	userID, errParseInt := strconv.ParseInt(c.Param("id"), 10, 64)
+	if errParseInt != nil {
+		helpers.ResponseBadRequestJSON(c, configs.EcParamUserID, "Invalid userID")
+		return
+	}
+
+	// check exist user
+	exist, errCheckExistUser := services.NewUserService().CheckExistUser(userID)
+	if errCheckExistUser != nil {
+		helpers.ResponseServerErrorJSON(c)
+		fmt.Printf("CheckExistUser service: %s\n", errCheckExistUser.Error())
+		return
+	}
+	if exist != true {
+		helpers.ResponseNotFoundJSON(c, configs.EcAuthNoExistUser, "No exist user")
+		return
+	}
+
+	// get my userid
+	myUserID, errGetUserIDFromToken := GetUserIDFromToken(c.Request.Header.Get("token"))
+	if errGetUserIDFromToken != nil {
+		helpers.ResponseServerErrorJSON(c)
+		fmt.Printf("GetUserIDFromToken controller: %s\n", errGetUserIDFromToken.Error())
+		return
+	}
+
+	// ParamsGetAll
+	params := helpers.ParamsGetAll{}
+	// params.Type = configs.SCanMention
+	// params.Type = c.DefaultQuery("type", params.Type)
+	params.Skip, _ = strconv.Atoi(c.DefaultQuery("skip", configs.SSkip))
+	params.Limit, _ = strconv.Atoi(c.DefaultQuery("limit", configs.SLimit))
+	params.Sort = c.DefaultQuery("sort", configs.SSort)
+	params.Sort, _ = helpers.ConvertSort(params.Sort)
+
+	channels, errGetFollowedChannels := controller.Service.GetFollowedChannels(params, userID, myUserID)
+	if errGetFollowedChannels != nil {
+		helpers.ResponseServerErrorJSON(c)
+		fmt.Printf("GetFollowedChannels service: %s\n", errGetFollowedChannels.Error())
+		return
+	}
+	helpers.ResponseEntityListJSON(c, 1, "Get followed channel successful", channels, params, len(channels))
+	return
+}

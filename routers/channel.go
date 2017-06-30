@@ -14,13 +14,17 @@ func AddRoutesChannels(r *gin.RouterGroup) {
 		routes.GET("", controller.GetAll)
 		routes.POST("", controller.Create)
 		routes.GET("/:id", controller.Get)
-		routes.GET("/:id/followers", controller.GetFollowers)
 		routes.DELETE("/:id", controller.Delete)
 		routes.PUT("/:id", controller.Update)
+
+		// work for follow
+		routes.GET("/:id/followers", controller.GetFollowers)
+		routes.POST("/:id/followers", controller.CreateFollower)
+		routes.DELETE("/:id/followers", controller.DeleteFollower)
 	}
-	// routes2 := r.Group("/users")
-	// {
-	// 	routes2.GET("/:id/channels", controller.GetJoinedGroup)
-	// }
+	routes2 := r.Group("/users")
+	{
+		routes2.GET("/:id/channels", controller.GetFollowedChannels)
+	}
 
 }

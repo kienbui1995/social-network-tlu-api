@@ -17,7 +17,11 @@ type ChannelServiceInterface interface {
 
 	CheckExistChannel(channelID int64) (bool, error)
 	CheckUserRole(channelID int64, userID int64) (int, error)
+	CheckExistFollowChannel(channelID int64, userID int64) (int64, error)
 	GetFollowers(params helpers.ParamsGetAll, channelID int64, myUserID int64) ([]models.UserFollowObject, error)
+	CreateFollower(channelID int64, myUserID int64) (bool, error)
+	DeleteFollower(subcriptionID int64) (bool, error)
+	GetFollowedChannels(params helpers.ParamsGetAll, userID int64, myUserID int64) ([]models.ChannelObject, error)
 
 	// Only Admin
 	Create(channel models.Channel, adminID int64) (int64, error)
@@ -276,6 +280,39 @@ func (service channelService) CheckUserRole(channelID int64, userID int64) (int,
 	return -1, nil
 }
 
+// CheckUserRole func
+// int64 int64
+// int error
+func (service channelService) CheckExistFollowChannel(channelID int64, userID int64) (int64, error) {
+	stmt := `
+	MATCH (u:User)-[m:FOLLOW]->(c:Channel)
+	WHERE ID(u) = {userID} AND ID(c) = {channelID}
+	RETURN ID(m)
+	`
+	paramsQuery := neoism.Props{
+		"channelID": channelID,
+		"userID":    userID,
+	}
+	res := []struct {
+		ID int64 `json:"id"`
+	}{}
+
+	cq := neoism.CypherQuery{
+		Statement:  stmt,
+		Parameters: paramsQuery,
+		Result:     &res,
+	}
+
+	err := conn.Cypher(&cq)
+	if err != nil {
+		return -1, err
+	}
+	if len(res) > 0 {
+		return res[0].ID, nil
+	}
+	return -1, nil
+}
+
 // GetFollowers func
 // helpers.ParamsGetAll int64 int64
 // []models.UserFollowObject error
@@ -287,10 +324,7 @@ func (service channelService) GetFollowers(params helpers.ParamsGetAll, channelI
 				WHERE ID(c) = {channelID}
 				WITH
 					u{
-						id: ID(u),
-						username: .username,
-						full_name: .full_name,
-						avatar: .avatar,
+						id: ID(u),.*,
 						is_followed: exists((me)-[:FOLLOW]->(u))
 					} AS user
 
@@ -301,7 +335,7 @@ func (service channelService) GetFollowers(params helpers.ParamsGetAll, channelI
 				`, "user."+params.Sort)
 
 	paramsQuery := map[string]interface{}{
-		"myuserid":  myUserID,
+		"myUserID":  myUserID,
 		"channelID": channelID,
 		"skip":      params.Skip,
 		"limit":     params.Limit,
@@ -320,6 +354,102 @@ func (service channelService) GetFollowers(params helpers.ParamsGetAll, channelI
 	}
 	if len(res) > 0 {
 		return res[0].Users, nil
+	}
+	return nil, nil
+}
+
+// CreateFollower func
+// int64 int64
+// bool error
+func (service channelService) CreateFollower(channelID int64, myUserID int64) (bool, error) {
+	stmt := `
+				MATCH(me:User) WHERE ID(me) = {myUserID}
+				MATCH (c:Channel) WHERE ID(c) = {channelID}
+				MERGE (me)-[f:FOLLOW]->(c)
+				ON CREATE SET f.created_at = TIMESTAMP(), c.followers=c.followers+1
+				`
+
+	paramsQuery := map[string]interface{}{
+		"myUserID":  myUserID,
+		"channelID": channelID,
+	}
+	cq := neoism.CypherQuery{
+		Statement:  stmt,
+		Parameters: paramsQuery,
+	}
+	err := conn.Cypher(&cq)
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+// DeleteFollower func
+// int64
+// bool error
+func (service channelService) DeleteFollower(subcriptionID int64) (bool, error) {
+	stmt := `
+				MATCH (u:User)-[f:FOLLOW]->(c:Channel)
+				WHERE ID(f)= {subcriptionID}
+				DELETE f
+				SET c.followers=c.followers-1
+				`
+	paramsQuery := map[string]interface{}{
+		"subcriptionID": subcriptionID,
+	}
+	cq := neoism.CypherQuery{
+		Statement:  stmt,
+		Parameters: paramsQuery,
+	}
+	err := conn.Cypher(&cq)
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+// GetFollowedChannels func
+// helpers.ParamsGetAll int64
+// []models.ChannelObject error
+func (service channelService) GetFollowedChannels(params helpers.ParamsGetAll, userID int64, myUserID int64) ([]models.ChannelObject, error) {
+	var stmt string
+	stmt = fmt.Sprintf(`
+				MATCH(me:User) WHERE ID(me) = {myUserID}
+				MATCH (c:Channel)<-[f:FOLLOW]-(u:User)
+				WHERE ID(u) = {userID}
+				WITH
+					c{
+						id: ID(c),
+						name: .name,
+						avatar: .avatar,
+						is_followed: exists((me)-[:FOLLOW]->(c))
+					} AS channel
+				ORDER BY %s
+				SKIP {skip}
+				LIMIT {limit}
+				RETURN collect(channel) AS channels
+				`, "channel."+params.Sort)
+
+	paramsQuery := map[string]interface{}{
+		"myUserID": myUserID,
+		"userID":   userID,
+		"skip":     params.Skip,
+		"limit":    params.Limit,
+	}
+	res := []struct {
+		Channels []models.ChannelObject `json:"channels"`
+	}{}
+	cq := neoism.CypherQuery{
+		Statement:  stmt,
+		Parameters: paramsQuery,
+		Result:     &res,
+	}
+	err := conn.Cypher(&cq)
+	if err != nil {
+		return nil, err
+	}
+	if len(res) > 0 {
+		return res[0].Channels, nil
 	}
 	return nil, nil
 }
