@@ -420,8 +420,7 @@ func (service channelService) GetFollowedChannels(params helpers.ParamsGetAll, u
 				WITH
 					c{
 						id: ID(c),
-						name: .name,
-						avatar: .avatar,
+						.*,
 						is_followed: exists((me)-[:FOLLOW]->(c))
 					} AS channel
 				ORDER BY %s
