@@ -4,6 +4,7 @@ package models
 type Channel struct {
 	ID          int64  `json:"id"`
 	Name        string `json:"name"`
+	ShortName   string `json:"short_name"`
 	Description string `json:"description,omitempty"`
 	Followers   int    `json:"followers,omitempty"`
 	Posts       int    `json:"posts,omitempty"`
@@ -21,10 +22,11 @@ func (channel Channel) IsEmpty() bool {
 	return channel == Channel{}
 }
 
-// Channel struct
+// InfoChannel struct
 type InfoChannel struct {
 	ID          int64  `json:"id"`
 	Name        string `json:"name"`
+	ShortName   string `json:"short_name"`
 	Description string `json:"description,omitempty"`
 	Avatar      string `json:"avatar,omitempty"`
 	Cover       string `json:"cover,omitempty"`

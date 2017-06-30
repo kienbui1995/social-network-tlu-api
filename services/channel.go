@@ -287,7 +287,7 @@ func (service channelService) CheckExistFollowChannel(channelID int64, userID in
 	stmt := `
 	MATCH (u:User)-[m:FOLLOW]->(c:Channel)
 	WHERE ID(u) = {userID} AND ID(c) = {channelID}
-	RETURN ID(m)
+	RETURN ID(m) AS id
 	`
 	paramsQuery := neoism.Props{
 		"channelID": channelID,
