@@ -479,3 +479,39 @@ func (controller ChannelController) GetFollowedChannels(c *gin.Context) {
 	helpers.ResponseEntityListJSON(c, 1, "Get followed channel successful", channels, params, len(channels))
 	return
 }
+
+// Notification
+//
+//
+
+// GetNotifications func
+func (controller ChannelController) GetNotifications(c *gin.Context) {
+	// Check permisson
+	myUserID, errGetUserIDFromToken := GetUserIDFromToken(c.Request.Header.Get("token"))
+	if errGetUserIDFromToken != nil {
+		helpers.ResponseServerErrorJSON(c)
+		fmt.Printf("GetUserIDFromToken controller: %s\n", errGetUserIDFromToken.Error())
+		return
+	}
+	json := models.Channel{}
+	if errBindJSON := c.BindJSON(&json); errBindJSON != nil {
+		helpers.ResponseBadRequestJSON(c, configs.EcParam, "BindJSON: "+errBindJSON.Error())
+		return
+	}
+
+	if json.Status == 0 {
+		json.Status = 1
+	}
+
+	channelID, errCreate := controller.Service.Create(json, myUserID)
+	if errCreate == nil && channelID >= 0 {
+		helpers.ResponseSuccessJSON(c, 1, "Create channel successful", map[string]interface{}{"id": channelID})
+		return
+	}
+	helpers.ResponseServerErrorJSON(c)
+	if errCreate != nil {
+		fmt.Printf("Create services: %s\n", errCreate.Error())
+	} else {
+		fmt.Printf("Create services: Don't create channel")
+	}
+}
