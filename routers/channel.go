@@ -23,4 +23,9 @@ func AddRoutesChannels(r *gin.RouterGroup) {
 		routes.DELETE("/:id/followers", controller.DeleteFollower)
 	}
 
+	routes2 := r.Group("/users")
+	{
+		routes2.GET("/:id/channels", controller.GetFollowedChannels)
+	}
+
 }

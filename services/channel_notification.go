@@ -183,7 +183,7 @@ func (service channelNotificationService) Update(channelNotification models.Chan
 	stmt := `
   	MATCH (s:ChannelNotification)<-[:CREATE]-(c:Channel)
     WHERE ID(s) = {channelNotificationID}
-		SET s.message = {message}, s.title = {title}, s.time = {time}, s.place = {place}, s.updated_at = TIMESTAMP()
+		SET s.message = {message}, s.title = {title}, s.time = {time}, s.place = {place}, s.photo = {photo}, s.updated_at = TIMESTAMP()
     RETURN
 		ID(s) AS id,
 		s.title AS title,
@@ -200,6 +200,7 @@ func (service channelNotificationService) Update(channelNotification models.Chan
 		"title":                 channelNotification.Title,
 		"time":                  channelNotification.Time,
 		"place":                 channelNotification.Place,
+		"photo":                 channelNotification.Photo,
 	}
 
 	res := []models.ChannelNotification{}
