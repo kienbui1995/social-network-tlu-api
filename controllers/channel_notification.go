@@ -191,7 +191,7 @@ func (controller ChannelNotificationController) Create(c *gin.Context) {
 	channelNotificationID, errCreate := controller.Service.Create(channelNotification, channelID)
 	if errCreate == nil && channelNotificationID >= 0 {
 		helpers.ResponseSuccessJSON(c, 1, "Create channel notification successful", map[string]interface{}{"id": channelNotificationID})
-
+		return
 		// // auto noti
 		// go func() {
 		//
