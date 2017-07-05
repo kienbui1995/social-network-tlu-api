@@ -20,7 +20,7 @@ func AddRoutesViolations(r *gin.RouterGroup) {
 	routes2 := r.Group("/students")
 	{
 		routes2.GET("/:id/violations", controller.GetAllOfStudent)
-
+		routes2.POST("/:id/violations", controller.Create)
 	}
 
 	routes3 := r.Group("/supervisiors")
