@@ -17,11 +17,11 @@ type StudentController struct {
 
 // GetAll func
 func (controller StudentController) GetAll(c *gin.Context) {
-	code, errParseInt := strconv.ParseInt(c.Query("class_code"), 10, 64)
-	if errParseInt != nil {
-		helpers.ResponseBadRequestJSON(c, configs.EcParam, "Invalid params")
-		return
-	}
+	// code, errParseInt := strconv.ParseInt(c.Query("class_code"), 10, 64)
+	// if errParseInt != nil {
+	// 	helpers.ResponseBadRequestJSON(c, configs.EcParam, "Invalid params")
+	// 	return
+	// }
 
 	//check permisson
 	myUserID, errGetUserIDFromToken := GetUserIDFromToken(c.Request.Header.Get("token"))
@@ -42,6 +42,9 @@ func (controller StudentController) GetAll(c *gin.Context) {
 	params := helpers.ParamsGetAll{}
 	params.Skip, _ = strconv.Atoi(c.DefaultQuery("skip", configs.SSkip))
 	params.Limit, _ = strconv.Atoi(c.DefaultQuery("limit", configs.SLimit))
+	if len(c.Query("name")) > 0 {
+		params.Properties = map[string]interface{}{"name": c.DefaultQuery("name", "")}
+	}
 	// params.Type = c.DefaultQuery("type", configs.SPost)
 	// if (params.Type != configs.SPostPhoto && params.Type != configs.SPostStatus) && params.Type != configs.SPost {
 	// 	helpers.ResponseBadRequestJSON(c, configs.EcParam, "Invalid parameter: type")
@@ -49,7 +52,7 @@ func (controller StudentController) GetAll(c *gin.Context) {
 	// }
 	params.Sort = c.DefaultQuery("sort", configs.SSort)
 	params.Sort, _ = helpers.ConvertSort(params.Sort)
-	students, errGetAll := controller.Service.GetAll(params, code)
+	students, errGetAll := controller.Service.GetAll(params)
 	if errGetAll != nil {
 		helpers.ResponseServerErrorJSON(c)
 		fmt.Printf("GetAll service: %s\n", errGetAll.Error())

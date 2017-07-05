@@ -121,3 +121,10 @@ type SemesterObject struct {
 	Symbol string `json:"symbol,omitempty"`
 	Name   string `json:"name,omitempty"`
 }
+
+// StudentObject struct
+type SupervisiorObject struct {
+	ID   int64  `json:"id"`
+	Code string `json:"code"`
+	Name string `json:"name"`
+}

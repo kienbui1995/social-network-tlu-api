@@ -38,6 +38,7 @@ func InitRoutes() *gin.Engine {
 			AddRoutesStudents(v1)
 			AddRoutesExamSchedules(v1)
 			AddRoutesChannelNotifications(v1)
+			AddRoutesViolations(v1)
 		}
 
 	}

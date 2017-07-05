@@ -12,7 +12,7 @@ import (
 
 // StudentServiceInterface include method list
 type StudentServiceInterface interface {
-	GetAll(params helpers.ParamsGetAll, classCode int64) ([]models.Student, error)
+	GetAll(params helpers.ParamsGetAll) ([]models.Student, error)
 	// Get(semesterID int64) (models.Semester, error)
 	// Delete(semesterID int64) (bool, error)
 	// Create(semester models.Semester) (int64, error)
@@ -36,9 +36,31 @@ func NewStudentService() StudentServiceInterface {
 // GetAll func
 // helpers.ParamsGetAll
 // models.Post error
-func (service studentService) GetAll(params helpers.ParamsGetAll, classCode int64) ([]models.Student, error) {
+func (service studentService) GetAll(params helpers.ParamsGetAll) ([]models.Student, error) {
 	var stmt string
-	stmt = fmt.Sprintf(`
+	var paramsQuery map[string]interface{}
+	if params.Properties["name"] != nil {
+		name := params.Properties["name"].(string)
+
+		stmt = fmt.Sprintf(`
+			    MATCH(s:Student)
+					WHERE toLower(s.code) CONTAINS toLower({name})  OR (toLower(s.last_name+" "+s.first_name)  CONTAINS toLower({name}))
+					with s
+					ORDER BY %s
+					SKIP {skip}
+					LIMIT {limit}
+					RETURN
+						collect(s{id:ID(s), .*}) AS students
+			  	`, "s."+params.Sort)
+
+		paramsQuery = map[string]interface{}{
+			"skip":  params.Skip,
+			"limit": params.Limit,
+			"name":  name,
+		}
+	} else {
+
+		stmt = fmt.Sprintf(`
 		    MATCH(s:Student)
 				with s
 				ORDER BY %s
@@ -46,14 +68,12 @@ func (service studentService) GetAll(params helpers.ParamsGetAll, classCode int6
 				LIMIT {limit}
 				RETURN
 					collect(s{id:ID(s), .*}) AS students
-
-
 		  	`, "s."+params.Sort)
 
-	paramsQuery := map[string]interface{}{
-		"skip":      params.Skip,
-		"limit":     params.Limit,
-		"classCode": strconv.FormatInt(classCode, 10),
+		paramsQuery = map[string]interface{}{
+			"skip":  params.Skip,
+			"limit": params.Limit,
+		}
 	}
 	res := []struct{ Students []models.Student }{}
 	cq := neoism.CypherQuery{
