@@ -35,6 +35,7 @@ func (controller StudentController) GetAll(c *gin.Context) {
 		fmt.Printf("GetRoleFromUserID controller: %s\n", errGetRoleFromUserID.Error())
 		return
 	}
+	fmt.Printf("role: %d\n", role)
 	if role != configs.IStudentRole && role != configs.IAdminRole && role != configs.ISupervisorRole && role != configs.ITeacherRole {
 		helpers.ResponseAuthJSON(c, 200, "Permissions error")
 		return

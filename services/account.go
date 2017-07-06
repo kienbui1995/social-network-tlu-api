@@ -661,14 +661,14 @@ func (service accountService) GetRoleFromUserID(userID int64) (int, error) {
 	RETURN
 	exists((u)-[:IS_A{status:1}]->(:Student)) AS is_student,
 	exists((u)-[:IS_A{status:1}]->(:Teacher)) AS is_teacher,
-	exists((u)-[:IS_A{status:1}]->(:Supervisor)) AS is_supervisor,
+	exists((u)-[:IS_A{status:1}]->(:Supervisior)) AS is_supervisor,
 	exists((u)-[:IS_A{status:1}]->(:Admin)) AS is_admin,
 	CASE exists(u.created_at) WHEN true THEN true ELSE false END AS is_user
 	`
 	res := []struct {
 		IsStudent    bool `json:"is_student"`
 		IsTeacher    bool `json:"is_teacher"`
-		IsSuperVisor bool `json:"is_supervisor"`
+		IsSupervisor bool `json:"is_supervisor"`
 		IsAdmin      bool `json:"is_admin"`
 		IsUser       bool `json:"is_user"`
 	}{}
@@ -687,7 +687,7 @@ func (service accountService) GetRoleFromUserID(userID int64) (int, error) {
 	if len(res) > 0 {
 		if res[0].IsAdmin {
 			return configs.IAdminRole, nil
-		} else if res[0].IsSuperVisor {
+		} else if res[0].IsSupervisor {
 			return configs.ISupervisorRole, nil
 		} else if res[0].IsTeacher {
 			return configs.ITeacherRole, nil
