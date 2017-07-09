@@ -36,11 +36,11 @@ func ResponseNoContentJSON(c *gin.Context) {
 //ResponseEntityListJSON func
 func ResponseEntityListJSON(c *gin.Context, code int, message string, entityList interface{}, metadata interface{}, total int) {
 	c.JSON(200, gin.H{
-		"code":     1,
-		"data":     entityList,
-		"total":    total,
-		"metadata": metadata,
-		"message":  message,
+		"code":  1,
+		"data":  entityList,
+		"total": total,
+		//"metadata": metadata,
+		"message": message,
 	})
 }
 

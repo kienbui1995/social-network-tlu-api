@@ -17,5 +17,7 @@ func AddRoutesUsers(r *gin.RouterGroup) {
 		routes.DELETE("/:id", controller.Delete)
 		routes.PUT("/:id", controller.Update)
 
+		// work with studentCode
+		//routes.POST("/:id/", handlers)
 	}
 }

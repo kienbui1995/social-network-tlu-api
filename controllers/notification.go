@@ -307,14 +307,17 @@ func (controller NotificationController) UpdateFollowNotification(userID int64, 
 func (controller NotificationController) UpdatePostNotification(userID int64) error {
 	notify1, errUpdateStatusNotification := controller.Service.UpdateStatusNotification(userID)
 	if errUpdateStatusNotification != nil {
+		fmt.Printf("UpdateStatusNotification:\n")
 		return errUpdateStatusNotification
 	}
 	userIDs1, errGetNotificationSubcriber1 := controller.Service.GetNotificationSubcriber(notify1.ID)
 	if errGetNotificationSubcriber1 != nil {
+		fmt.Printf("GetNotificationSubcriber:\n")
 		return errGetNotificationSubcriber1
 	}
 	errPushTest1 := controller.PushTest(notify1, userIDs1)
 	if errPushTest1 != nil {
+		fmt.Printf("PushTest:\n")
 		return errPushTest1
 	}
 

@@ -505,8 +505,17 @@ func (service notificationService) UpdateStatusNotification(userID int64) (model
 			WHERE p1.privacy <>3 AND TIMESTAMP()- p1.created_at < {limit_time}
 			WITH p,u, count(p1) AS total_action
 			MERGE (u)-[g:GENERATE]->(n:Notification{action:{action}})
-			ON CREATE SET g.created_at = TIMESTAMP(),n.updated_at = p.created_at,n.last_post = p{id:ID(p), message:p.message}, n.total_action = total_action, n.actor= u{id:ID(u),username:u.username,full_name:u.full_name,avatar:u.avatar}
-			ON MATCH SET n.updated_at = p.created_at,n.last_post = p{id:ID(p), message:p.message}, n.total_action = total_action, n.actor= u{id:ID(u),username:u.username,full_name:u.full_name,avatar:u.avatar}
+			ON CREATE SET
+				g.created_at = TIMESTAMP(),
+				n.updated_at = p.created_at,
+				n.last_post = apoc.convert.toJson(p{id:ID(p), message:p.message}),
+				n.total_action = total_action,
+				n.actor= apoc.convert.toJson(u{id:ID(u), username:u.username, full_name:u.full_name, avatar:u.avatar})
+			ON MATCH SET
+			n.updated_at = p.created_at,
+			n.last_post = apoc.convert.toJson(p{id:ID(p), message:p.message}),
+			n.total_action = total_action,
+			n.actor= apoc.convert.toJson(u{id:ID(u),username:u.username,full_name:u.full_name,avatar:u.avatar})
 			RETURN
 				ID(n) AS id,
 				n.actor AS actor,

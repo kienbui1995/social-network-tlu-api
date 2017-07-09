@@ -312,11 +312,16 @@ const (
 
 // Role user
 const (
-	IUserRole       = 1
-	IStudentRole    = 2
-	ITeacherRole    = 3
-	ISupervisorRole = 4
-	IAdminRole      = 5
+	IUserRole        = 1
+	SUserRole        = "user"
+	IStudentRole     = 2
+	SStudentRole     = "student"
+	ITeacherRole     = 3
+	STeacherRole     = "teacher"
+	ISupervisorRole  = 4
+	SSupervisiorRole = "supervisior"
+	IAdminRole       = 5
+	SAdminRole       = "admin"
 )
 
 //FCMToken struct

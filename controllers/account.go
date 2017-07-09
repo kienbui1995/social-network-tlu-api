@@ -139,7 +139,24 @@ func (controller AccountController) Login(c *gin.Context) {
 		helpers.ResponseServerErrorJSON(c)
 		fmt.Printf("SaveToken service: %v\n", errSaveToken.Error())
 	}
-	helpers.ResponseSuccessJSON(c, configs.EcSuccess, "Login successful", map[string]interface{}{"id": json.ID, "token": token})
+	role, errGetRoleFromUserID := GetRoleFromUserID(json.ID)
+	if errGetRoleFromUserID != nil {
+		helpers.ResponseServerErrorJSON(c)
+		fmt.Printf("GetRoleFromUserID helpers: %v\n", errGetRoleFromUserID.Error())
+	}
+	var sRole string
+	if role == configs.IAdminRole {
+		sRole = configs.SAdminRole
+	} else if role == configs.ISupervisorRole {
+		sRole = configs.SSupervisiorRole
+	} else if role == configs.ITeacherRole {
+		sRole = configs.STeacherRole
+	} else if role == configs.IStudentRole {
+		sRole = configs.SStudentRole
+	} else if role == configs.IUserRole {
+		sRole = configs.SUserRole
+	}
+	helpers.ResponseSuccessJSON(c, configs.EcSuccess, "Login successful", map[string]interface{}{"id": json.ID, "token": token, "role": sRole})
 }
 
 // Logout func

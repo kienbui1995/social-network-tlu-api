@@ -192,7 +192,7 @@ func (controller PostController) Create(c *gin.Context) {
 			Notification := NotificationController{Service: services.NewNotificationService()}
 			err := Notification.UpdatePostNotification(userID)
 			if err != nil {
-				fmt.Printf("UpdateLikeNotification: %s\n", err.Error())
+				fmt.Printf("UpdatePostNotification: %s\n", err.Error())
 			}
 		}()
 		return
