@@ -24,6 +24,8 @@ type UserServiceInterface interface {
 	CreateRequestLinkCode(request models.RequestLinkCode, userID int64) (int64, error)
 	AcceptLinkCode(requestID int64) (bool, error)
 	DeleteRequestLinkCode(requestID int64) (bool, error)
+	GetAllRequestsLinkCode(params helpers.ParamsGetAll) ([]models.RequestLinkCode, error)
+	CheckExistRequestLinkCode(requestID int64) (bool, error)
 }
 
 // UserService struct
@@ -383,26 +385,27 @@ func (service userService) CreateRequestLinkCode(request models.RequestLinkCode,
 			RETURN ID(f)
 	`
 		params = neoism.Props{
-			"userID":           request.User.ID,
+			"userID":           userID,
 			"email":            request.Email,
 			"verifycationCode": request.VerificationCode,
 		}
 	} else {
 		stmt = `
 		MATCH (u:User) WHERE ID(u) = {userID}
-		MATCH (s:Student) WHERE s.code = {code}
+		MATCH (s:Student) WHERE toLower(s.code) = toLower({code})
 		CREATE (u)-[f:IS_A]->(s)
 		SET
 			f.created_at = TIMESTAMP(),
 			f.full_name = {fullName},
 			f.photo = {photo},
 			f.status=0
-		RETURN ID(f)
+		RETURN ID(f) AS id
 	`
 		params = neoism.Props{
 			"code":     request.Code,
 			"fullName": request.FullName,
 			"photo":    request.Photo,
+			"userID":   userID,
 		}
 	}
 	type resStruct struct {
@@ -428,20 +431,21 @@ func (service userService) CreateRequestLinkCode(request models.RequestLinkCode,
 // 	GetRequestsLinkCode
 // helpers.ParamsGetAll
 // []models.RequestLinkCode error
-func (service userService) GetRequestsLinkCode(params helpers.ParamsGetAll) ([]models.RequestLinkCode, error) {
+func (service userService) GetAllRequestsLinkCode(params helpers.ParamsGetAll) ([]models.RequestLinkCode, error) {
 	stmt := fmt.Sprintf(`
-	MATCH (u:User)-[f:IS_A{status:0}]->(s:Student)
-	WHERE exists(f.photo)
-	RETURN
-		id: ID(f),
-		user: u{id:ID(u),.username,.full_name,.avatar},
-		student: s{id:ID(s),s.code,name: s.first_name + " " + s.last_name}
-		code: code,
-		full_name: full_name,
-		photo: photo
-	ORDER BY %s
-	SKIP {skip}
-	LIMIT {limit}`, params.Sort)
+		MATCH (u:User)-[f:IS_A{status:0}]->(s:Student)
+		WHERE exists(f.photo)
+		RETURN
+			ID(f) AS id,
+			u{id:ID(u),.username,.full_name,.avatar} AS user,
+			s{id:ID(s),.code, name: s.first_name + " " + s.last_name} AS student,
+			f.code AS code,
+			f.full_name AS full_name,
+			f.photo AS photo,
+			f.created_at AS created_at
+		ORDER BY %s
+		SKIP {skip}
+		LIMIT {limit}`, params.Sort)
 	p := map[string]interface{}{
 		"skip":  params.Skip,
 		"limit": params.Limit,
@@ -514,4 +518,37 @@ func (service userService) DeleteRequestLinkCode(requestID int64) (bool, error) 
 		return false, err
 	}
 	return true, nil
+}
+
+// 	CheckExistRequestLinkCode
+// int64
+// bool error
+func (service userService) CheckExistRequestLinkCode(requestID int64) (bool, error) {
+	stmt := `
+	MATCH (u:User)-[f:IS_A{status:0}]->(s:Student)
+	WHERE ID(f) = {requestID}
+	RETURN ID(f) AS id
+	`
+	params := neoism.Props{
+		"requestID": requestID,
+	}
+
+	var res []struct {
+		ID int64 `json:"id"`
+	}
+	cq := neoism.CypherQuery{
+		Statement:  stmt,
+		Parameters: params,
+		Result:     &res,
+	}
+	err := conn.Cypher(&cq)
+	if err != nil {
+		return false, err
+	}
+	if len(res) > 0 {
+		if res[0].ID == requestID {
+			return true, nil
+		}
+	}
+	return false, nil
 }

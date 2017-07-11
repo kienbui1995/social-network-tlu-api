@@ -206,7 +206,11 @@ func (controller UserController) RequestLinkCode(c *gin.Context) {
 		fmt.Printf("CreateRequestLinkCode service: %s\n", errCreateRequestLinkCode.Error())
 		return
 	}
-
+	if requestID < 0 {
+		helpers.ResponseServerErrorJSON(c)
+		fmt.Printf("CreateRequestLinkCode service: Don't create request link code\n")
+		return
+	}
 	helpers.ResponseSuccessJSON(c, 1, "create request link code successful", map[string]interface{}{"id": requestID})
 }
 
@@ -267,10 +271,36 @@ func (controller UserController) DeleteRequestLinkCode(c *gin.Context) {
 	// 	return
 	// }
 	// Valida se deu erro ao tentar excluir (500)
+
+	exist, errCheckExistRequestLinkCode := controller.Service.CheckExistRequestLinkCode(requestID)
+	if errCheckExistRequestLinkCode != nil {
+		helpers.ResponseServerErrorJSON(c)
+		return
+	}
+	if exist == false {
+		helpers.ResponseNotFoundJSON(c, configs.EcNoExistObject, "Not found request link code")
+		return
+	}
 	if _, err := controller.Service.DeleteRequestLinkCode(requestID); err != nil {
 		helpers.ResponseServerErrorJSON(c)
 		fmt.Printf("Delete service: %s\n", err)
 		return
 	}
 	helpers.ResponseNoContentJSON(c)
+}
+
+// GetAllRequestLinkCode func
+func (controller UserController) GetAllRequestLinkCode(c *gin.Context) {
+	params := helpers.ParamsGetAll{}
+	params.Skip, _ = strconv.Atoi(c.DefaultQuery("skip", configs.SSkip))
+	params.Limit, _ = strconv.Atoi(c.DefaultQuery("limit", configs.SLimit))
+	params.Sort = c.DefaultQuery("sort", configs.SSort)
+	params.Sort, _ = helpers.ConvertSort(params.Sort)
+	requests, errGetAll := controller.Service.GetAllRequestsLinkCode(params)
+	if errGetAll != nil {
+		helpers.ResponseServerErrorJSON(c)
+		fmt.Printf("GetAllRequestLinkCode service: %s\n", errGetAll.Error())
+		return
+	}
+	helpers.ResponseEntityListJSON(c, 1, "Get request link code list successful", requests, params, len(requests))
 }

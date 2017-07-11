@@ -22,6 +22,7 @@ func AddRoutesUsers(r *gin.RouterGroup) {
 	}
 	routes2 := r.Group("/requests_link_code")
 	{
+		routes2.GET("", controller.GetAllRequestLinkCode)
 		routes2.PUT("/:id", controller.AcceptLinkCode)
 		routes2.DELETE("/:id", controller.DeleteRequestLinkCode)
 	}
