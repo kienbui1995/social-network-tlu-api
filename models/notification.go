@@ -10,6 +10,7 @@ type Notification struct {
 	LastComment *CommentObject `json:"last_comment,omitempty"`
 	LastMention *MentionObject `json:"last_mention,omitempty"`
 	LastUser    *UserObject    `json:"last_user,omitempty"`
+	Group       *GroupObject   `json:"group,omitempty"`
 	Title       string         `json:"title,omitempty"`
 	Message     string         `json:"message,omitempty"`
 	UpdatedAt   int64          `json:"updated_at,omitempty"`

@@ -340,3 +340,44 @@ func (controller ClassController) GetAllByRoom(c *gin.Context) {
 	}
 	helpers.ResponseEntityListJSON(c, 1, "Get class list successful", classes, params, len(classes))
 }
+
+// // GetAllByStudent func
+// func (controller ClassController) GetAllByStudent(c *gin.Context) {
+// 	studentCode := c.Query("student_code")
+// 	semesterCode := c.Query("semester_code")
+//
+// 	//check permisson
+// 	myUserID, errGetUserIDFromToken := GetUserIDFromToken(c.Request.Header.Get("token"))
+// 	if errGetUserIDFromToken != nil {
+// 		helpers.ResponseAuthJSON(c, 200, "Permissions error")
+// 		return
+// 	}
+// 	role, errGetRoleFromUserID := GetRoleFromUserID(myUserID)
+// 	if errGetRoleFromUserID != nil {
+// 		helpers.ResponseAuthJSON(c, 200, "Permissions error")
+// 		fmt.Printf("GetRoleFromUserID controller: %s\n", errGetRoleFromUserID.Error())
+// 		return
+// 	}
+// 	if role != configs.IStudentRole && role != configs.IAdminRole && role != configs.ISupervisorRole && role != configs.ITeacherRole {
+// 		fmt.Printf("role: %v\n", role)
+// 		helpers.ResponseAuthJSON(c, 200, "Permissions error")
+// 		return
+// 	}
+// 	params := helpers.ParamsGetAll{}
+// 	params.Skip, _ = strconv.Atoi(c.DefaultQuery("skip", configs.SSkip))
+// 	params.Limit, _ = strconv.Atoi(c.DefaultQuery("limit", configs.SLimit))
+// 	// params.Type = c.DefaultQuery("type", configs.SPost)
+// 	// if (params.Type != configs.SPostPhoto && params.Type != configs.SPostStatus) && params.Type != configs.SPost {
+// 	// 	helpers.ResponseBadRequestJSON(c, configs.EcParam, "Invalid parameter: type")
+// 	// 	return
+// 	// }
+// 	params.Sort = c.DefaultQuery("sort", configs.SSort)
+// 	params.Sort, _ = helpers.ConvertSort(params.Sort)
+// 	classes, errGetAll := controller.Service.GetAllByStudent(params, semesterCode, studentCode)
+// 	if errGetAll != nil {
+// 		helpers.ResponseServerErrorJSON(c)
+// 		fmt.Printf("GetAll service: %s\n", errGetAll.Error())
+// 		return
+// 	}
+// 	helpers.ResponseEntityListJSON(c, 1, "Get class list successful", classes, params, len(classes))
+// }

@@ -18,6 +18,7 @@ type GroupMembershipServiceInterface interface {
 	Create(groupID int64, userID int64) (int64, error)
 	Update(membership models.GroupMembership) (models.GroupMembership, error)
 	CheckExistGroupMembership(groupID int64, userID int64) (bool, error)
+	GetAdmin(groupID int64) ([]int64, error)
 }
 
 // groupMembershipService struct
@@ -442,4 +443,36 @@ func (service groupMembershipService) CheckExistGroupMembership(groupID int64, u
 		}
 	}
 	return false, nil
+}
+
+// GetAdmin func
+// int64
+// []int64 error
+func (service groupMembershipService) GetAdmin(groupID int64) ([]int64, error) {
+	stmt := `
+				MATCH (g:Group)<-[r:JOIN]-(u:User)
+				WHERE ID(g) = {groupID} AND (r.role =2 OR r.role = 3) AND r.status = 1
+				RETURN collect(ID(g)) AS ids
+				`
+
+	paramsQuery := neoism.Props{
+		"groupID": groupID,
+	}
+
+	res := []struct {
+		IDs []int64 `json:"ids"`
+	}{}
+	cq := neoism.CypherQuery{
+		Statement:  stmt,
+		Parameters: paramsQuery,
+		Result:     &res,
+	}
+	err := conn.Cypher(&cq)
+	if err != nil {
+		return nil, err
+	}
+	if len(res) > 0 {
+		return res[0].IDs, nil
+	}
+	return nil, nil
 }

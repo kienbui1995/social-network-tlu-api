@@ -121,28 +121,32 @@ const (
 
 // Const type action notification
 const (
-	IActionLike          = 1 // last user liked post
-	SActionLike          = "like"
-	IActionComment       = 2 // last user commented post
-	SActionComment       = "comment"
-	IActionShare         = 3 // last user shared post
-	SActionShare         = "share"
-	IActionMention       = 4 // last user mentioned me in a post
-	SActionMention       = "mention"
-	IActionPost          = 5 // last post created by a user
-	SActionPost          = "post"
-	IActionFollow        = 6 // last object followed created by a user
-	SActionFollow        = "follow"
-	IActionPostPhoto     = 7 // last photo created by a user
-	SActionPostPhoto     = "photo_post"
-	IActionPostStatus    = 8 // last status created by a user
-	SActionPostStatus    = "status_post"
-	IActionLikedPost     = 9 // last  post liked by a user
-	SActionLikedPost     = "liked_post"
-	IActionCommentedPost = 10 // last  post commented by a user
-	SActionCommentedPost = "commented_post"
-	IActionMentionedPost = 11 // last  post commented by a user
-	SActionMentionedPost = "mentioned_post"
+	IActionLike              = 1 // last user liked post
+	SActionLike              = "like"
+	IActionComment           = 2 // last user commented post
+	SActionComment           = "comment"
+	IActionShare             = 3 // last user shared post
+	SActionShare             = "share"
+	IActionMention           = 4 // last user mentioned me in a post
+	SActionMention           = "mention"
+	IActionPost              = 5 // last post created by a user
+	SActionPost              = "post"
+	IActionFollow            = 6 // last object followed created by a user
+	SActionFollow            = "follow"
+	IActionPostPhoto         = 7 // last photo created by a user
+	SActionPostPhoto         = "photo_post"
+	IActionPostStatus        = 8 // last status created by a user
+	SActionPostStatus        = "status_post"
+	IActionLikedPost         = 9 // last  post liked by a user
+	SActionLikedPost         = "liked_post"
+	IActionCommentedPost     = 10 // last  post commented by a user
+	SActionCommentedPost     = "commented_post"
+	IActionMentionedPost     = 11 // last  post commented by a user
+	SActionMentionedPost     = "mentioned_post"
+	IActionRequestJoinGroup  = 12
+	SActionRequestJoinGroup  = "request_join"
+	IActionAcceptRequestJoin = 13
+	SActionAcceptRequestJoin = "accept_request_join"
 )
 
 // const time to milliseconds
@@ -152,7 +156,8 @@ const (
 	IOneDay    = 86400000
 	ITwoDays   = 172800000
 	IOneWeek   = 604800000
-	IOneMonth  = 2629746000
+	IOneMonth  = 2592000000
+	IOneYear   = 31536000000
 	SOneDay    = "86400000"
 	STwoDays   = "172800000"
 	SOneWeek   = "604800000"

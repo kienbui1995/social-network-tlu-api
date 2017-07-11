@@ -390,3 +390,34 @@ func (controller NotificationController) PushTest(notify models.Notification, us
 	}
 	return nil
 }
+
+// UpdateRequestJoinNotification func
+func (controller NotificationController) UpdateRequestJoinNotification(groupID int64) error {
+	notify1, errUpdateRequestJoinNotification := controller.Service.UpdateRequestJoinNotification(groupID)
+	if errUpdateRequestJoinNotification != nil {
+		return errUpdateRequestJoinNotification
+	}
+	userIDs1, errGetNotificationSubcriber1 := controller.Service.GetNotificationSubcriber(notify1.ID)
+	if errGetNotificationSubcriber1 != nil {
+		return errGetNotificationSubcriber1
+	}
+
+	errPushTest1 := controller.PushTest(notify1, userIDs1)
+
+	if errPushTest1 != nil {
+		return errPushTest1
+	}
+
+	// Only creeate new noti, no push notification on device
+
+	// userIDs2, errGetNotificationSubcriber2 := controller.Service.GetNotificationSubcriber(notify2.ID)
+	// if errGetNotificationSubcriber2 != nil {
+	// 	return errGetNotificationSubcriber2
+	// }
+	// fmt.Printf("Pushnoti2:%s\n", errGetNotificationSubcriber2.Error())
+	// errPushTest2 := controller.PushTest(notify2, userIDs2)
+	// if errPushTest2 != nil {
+	// 	return errPushTest2
+	// }
+	return nil
+}

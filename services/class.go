@@ -463,7 +463,7 @@ func (service classService) UpdateFromTLU(semesterCode string) (bool, error) {
         c.finish_at = toString(lop.Giokt),
         c.status =1,
         c.created_at = timestamp()
-			MERGE ()
+			MERGE (c)-[:HAS_GROUP]->(g)
 	  	MERGE (c)-[:TEACH_ABOUT]->(sub)
       MERGE (semester)-[:OPENED]->(c)
 			`, configs.SURLGetClassListBySemesterCode+semesterCode, semesterCode)

@@ -34,6 +34,7 @@ type NotificationServiceInterface interface {
 	UpdateLikedPostNotification(userID int64) (models.Notification, error)
 	UpdateCommentedPostNotification(userID int64) (models.Notification, error)
 	UpdateMentionedPostNotification(userID int64) (models.Notification, error)
+	UpdateRequestJoinNotification(groupID int64) (models.Notification, error)
 }
 
 // notificationService struct
@@ -784,5 +785,69 @@ func (service notificationService) UpdateCommentedPostNotification(userID int64)
 // models.Notification error
 func (service notificationService) UpdateMentionedPostNotification(userID int64) (models.Notification, error) {
 	// ~doing ~needfix
+	return models.Notification{}, nil
+}
+
+// UpdateFollowNotification func
+// int64 int64
+// int64 error
+func (service notificationService) UpdateRequestJoinNotification(groupID int64) (models.Notification, error) {
+	stmt := `
+			MATCH(g:Group)
+			WHERE ID(g) = {groupID}
+			MATCH(g)<-[f:JOIN{status:0}]-(u1:User)
+			WITH g,f,u1
+			ORDER BY f.created_at DESC LIMIT 1
+			MATCH(g)<-[f_count:JOIN{status:0}]-(u_count:User)
+			WHERE TIMESTAMP() - f_count.created_at < {limit_time}
+			WITH g,f,u1,count(f_count) AS total_action
+			MERGE (g)-[gen:GENERATE]->(n:Notification{action:{action}})
+			ON CREATE SET
+				gen.created_at = TIMESTAMP(),
+				n.updated_at = f.created_at,
+				n.actor = apoc.convert.toJson(u1{id:ID(u1),username:u1.username,full_name:u1.full_name,avatar:u1.avatar}),
+				n.total_action = total_action,
+				n.group= apoc.convert.toJson(g{id:ID(g),name: g.name, avatar: CASE g.avatar THEN "" })
+			ON MATCH SET
+				n.updated_at = f.created_at,
+				n.actor = apoc.convert.toJson(u1{id:ID(u1),username:u1.username,full_name:u1.full_name,avatar:u1.avatar}),
+				n.total_action = total_action,
+				n.group= apoc.convert.toJson(g{id:ID(g),name: g.name, avatar: CASE g.avatar THEN "" })
+			WITH g,n
+			OPTIONAL MATCH (u:User)-[join:JOIN{status:1}]->(g)
+			WHERE join.role =2 OR join.role = 3
+			MERGE (n)<-[h:REGISTERED]-(u)
+			ON CREATE SET h.created_at = TIMESTAMP(), h.seen_at = 0
+			ON MATCH SET h.seen_at = 0
+			RETURN
+				ID(n) AS id,
+				apoc.convert.fromJsonMap(n.actor) AS actor,
+				CASE exists(n.last_comment) WHEN true THEN apoc.convert.fromJsonMap(n.last_comment) END AS last_comment,
+				CASE exists(n.last_post) WHEN true THEN apoc.convert.fromJsonMap(n.last_post) END AS last_post,
+				CASE exists(n.last_user) WHEN true THEN apoc.convert.fromJsonMap(n.last_user) END AS last_user,
+				CASE exists(n.last_mention) WHEN true THEN apoc.convert.fromJsonMap(n.last_mention) END AS last_mention,
+				CASE exists(n.group) WHEN true THEN apoc.convert.fromJsonMap(n.group) END AS group,
+				n.updated_at AS updated_at,
+				n.action AS action,
+				n.total_action AS total_action
+			`
+	params := map[string]interface{}{
+		"groupID":    groupID,
+		"limit_time": configs.ITwoDays,
+		"action":     configs.IActionRequestJoinGroup,
+	}
+	res := []models.Notification{}
+	cq := neoism.CypherQuery{
+		Statement:  stmt,
+		Parameters: params,
+		Result:     &res,
+	}
+	err := conn.Cypher(&cq)
+	if err != nil {
+		return models.Notification{}, err
+	}
+	if len(res) > 0 {
+		return res[0], nil
+	}
 	return models.Notification{}, nil
 }

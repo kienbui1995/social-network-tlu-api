@@ -168,6 +168,19 @@ func (controller GroupMembershipController) Create(c *gin.Context) {
 	}
 	if membershipID >= 0 {
 		helpers.ResponseJSON(c, 200, 1, "create membership successful", nil)
+
+		// push noti
+		go func() {
+			if role == configs.ICanRequest { // send noti to admin group
+				Notification := NotificationController{Service: services.NewNotificationService()}
+				err := Notification.UpdateRequestJoinNotification(groupID)
+				if err != nil {
+					fmt.Printf("UpdateRequestJoinNotification: %s\n", err.Error())
+				}
+			}
+		}()
+		return
+
 	}
 }
 
