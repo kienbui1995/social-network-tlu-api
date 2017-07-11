@@ -18,6 +18,11 @@ func AddRoutesUsers(r *gin.RouterGroup) {
 		routes.PUT("/:id", controller.Update)
 
 		// work with studentCode
-		//routes.POST("/:id/", handlers)
+		routes.POST("/:id/requests_link_code", controller.RequestLinkCode)
+	}
+	routes2 := r.Group("/requests_link_code")
+	{
+		routes2.PUT("/:id", controller.AcceptLinkCode)
+		routes2.DELETE("/:id", controller.DeleteRequestLinkCode)
 	}
 }

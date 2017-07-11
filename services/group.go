@@ -19,6 +19,7 @@ type GroupServiceInterface interface {
 	CheckExistGroup(groupID int64) (bool, error)
 	CheckUserRole(groupID int64, userID int64) (int, error)
 	GetJoinedGroup(params helpers.ParamsGetAll, userID int64, myUserID int64) ([]models.GroupJoin, error)
+	GetClassGroupOfStudent(params helpers.ParamsGetAll, studentCode string, userID int64) ([]models.GroupJoin, error)
 
 	GetMembers(params helpers.ParamsGetAll, groupID int64) ([]models.GroupMembership, error)
 	GetPendingUsers(params helpers.ParamsGetAll, groupID int64) ([]models.PendingUser, error)
@@ -96,8 +97,10 @@ func (service groupService) Get(groupID int64, myUserID int64) (models.GroupJoin
 	stmt := `
 				MATCH(me:User) WHERE ID(me) = {myUserID}
 				MATCH (g:Group) WHERE ID(g) = {groupID}
+				OPTIONAL MATCH (g)--(c:Class)
 				RETURN
 					ID(g) AS id,
+          c{id: ID(c), name: c.name, code: c.code} AS class,
 					g.name AS name,
 					g.description AS description,
 					g.members AS members,
@@ -262,7 +265,7 @@ func (service groupService) CheckUserRole(groupID int64, userID int64) (int, err
 	MATCH (g:Group)	WHERE ID(g)= {groupID}
 	MATCH (u:User) WHERE ID(u) = {userID}
 	RETURN
-		exists((u)-[:JOIN{role:1}]->(g)) AS is_member,
+		exists((u)-[:JOIN{role:1}]->(g)) OR exists((u)-->(:Student)-->(:Class)-->(g))  AS is_member,
 		exists((u)-[:JOIN{role:2}]->(g)) OR exists((u)-[:JOIN{role:3}]->(g)) AS is_admin,
 		exists((u)-[:JOIN{role:4}]->(g)) AS blocked,
 		exists((u)-[:JOIN{status:0}]->(g)) AS pending,
@@ -351,6 +354,59 @@ func (service groupService) GetJoinedGroup(params helpers.ParamsGetAll, userID i
 		"userID":   userID,
 		"skip":     params.Skip,
 		"limit":    params.Limit,
+	}
+	res := []models.GroupJoin{}
+	cq := neoism.CypherQuery{
+		Statement:  stmt,
+		Parameters: paramsQuery,
+		Result:     &res,
+	}
+	err := conn.Cypher(&cq)
+	if err != nil {
+		return nil, err
+	}
+	if len(res) > 0 {
+		return res, nil
+	}
+	return nil, nil
+}
+
+// GetClassGroupOfStudent func
+// helpers.ParamsGetAll int64
+// []models.GroupJoin error
+func (service groupService) GetClassGroupOfStudent(params helpers.ParamsGetAll, studentCode string, userID int64) ([]models.GroupJoin, error) {
+	var stmt string
+	stmt = fmt.Sprintf(`
+				MATCH (me:User) WHERE ID(me) = {userID}
+				MATCH (u:User)-[:IS_A]->(s:Student)-[:ENROLL]->(c:Class)-[:HAS_GROUP]->(g:Group)
+				WHERE s.code = {studentCode}
+				RETURN
+					ID(g) AS id,
+					g.name AS name,
+					g.description AS description,
+					g.members AS members,
+					g.posts AS posts,
+					g.avatar AS avatar,
+					g.cover AS cover,
+					g.privacy AS privacy,
+					g.created_at AS created_at,
+					g.updated_at AS updated_at,
+					g.status AS status,
+					c{id: ID(c), name: c.name, code: c.code} AS class,
+					exists((me)-[:JOIN{role:1}]->(g)) AS is_member,
+					exists((me)-[:JOIN{status:0}]->(g)) AS is_pending,
+					g.privacy = 2  and exists((me)-[:JOIN]->(g))=false AS can_request,
+					g.privacy = 1  and exists((me)-[:JOIN]->(g))=false AS can_join,
+					exists((me)-[:JOIN{role:2}]->(g)) OR exists((me)-[:JOIN{role:3}]->(g)) AS is_admin
+				ORDER BY %s
+				SKIP {skip}
+				LIMIT {limit}
+				`, params.Sort)
+
+	paramsQuery := map[string]interface{}{
+		"userID": userID,
+		"skip":   params.Skip,
+		"limit":  params.Limit,
 	}
 	res := []models.GroupJoin{}
 	cq := neoism.CypherQuery{

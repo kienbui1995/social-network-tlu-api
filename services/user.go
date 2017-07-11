@@ -2,6 +2,7 @@ package services
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/jmcvetta/neoism"
 	"github.com/kienbui1995/social-network-tlu-api/helpers"
@@ -19,6 +20,10 @@ type UserServiceInterface interface {
 	CheckExistEmail(string) (bool, error)
 	CreateEmailActive(string, string, int64) error
 	CheckExistUser(int64) (bool, error)
+
+	CreateRequestLinkCode(request models.RequestLinkCode, userID int64) (int64, error)
+	AcceptLinkCode(requestID int64) (bool, error)
+	DeleteRequestLinkCode(requestID int64) (bool, error)
 }
 
 // UserService struct
@@ -358,4 +363,155 @@ func (service userService) CheckExistUser(id int64) (bool, error) {
 		}
 	}
 	return false, nil
+}
+
+// 	CreateRequestLinkCode
+// models.RequestLinkCode int64
+// int64 error
+func (service userService) CreateRequestLinkCode(request models.RequestLinkCode, userID int64) (int64, error) {
+	var stmt string
+	var params neoism.Props
+	if len(request.Email) > 0 {
+		stmt = `
+			MATCH (u:User) WHERE ID(u) = {userID}
+			MATCH (s:Student) WHERE toLower(email) = toLower({email})
+			CREATE (u)-[f:IS_A]->(s)
+			SET
+				f.created_at = TIMESTAMP(),
+				f.verifycation_code = {verifycationCode}
+				f.status=0
+			RETURN ID(f)
+	`
+		params = neoism.Props{
+			"userID":           request.User.ID,
+			"email":            request.Email,
+			"verifycationCode": request.VerificationCode,
+		}
+	} else {
+		stmt = `
+		MATCH (u:User) WHERE ID(u) = {userID}
+		MATCH (s:Student) WHERE s.code = {code}
+		CREATE (u)-[f:IS_A]->(s)
+		SET
+			f.created_at = TIMESTAMP(),
+			f.full_name = {fullName},
+			f.photo = {photo},
+			f.status=0
+		RETURN ID(f)
+	`
+		params = neoism.Props{
+			"code":     request.Code,
+			"fullName": request.FullName,
+			"photo":    request.Photo,
+		}
+	}
+	type resStruct struct {
+		ID int64 `json:"id"`
+	}
+	res := []resStruct{}
+	cq := neoism.CypherQuery{
+		Statement:  stmt,
+		Parameters: params,
+		Result:     &res,
+	}
+	err := conn.Cypher(&cq)
+	if err != nil {
+		return -1, err
+
+	}
+	if len(res) > 0 {
+		return res[0].ID, nil
+	}
+	return -1, nil
+}
+
+// 	GetRequestsLinkCode
+// helpers.ParamsGetAll
+// []models.RequestLinkCode error
+func (service userService) GetRequestsLinkCode(params helpers.ParamsGetAll) ([]models.RequestLinkCode, error) {
+	stmt := fmt.Sprintf(`
+	MATCH (u:User)-[f:IS_A{status:0}]->(s:Student)
+	WHERE exists(f.photo)
+	RETURN
+		id: ID(f),
+		user: u{id:ID(u),.username,.full_name,.avatar},
+		student: s{id:ID(s),s.code,name: s.first_name + " " + s.last_name}
+		code: code,
+		full_name: full_name,
+		photo: photo
+	ORDER BY %s
+	SKIP {skip}
+	LIMIT {limit}`, params.Sort)
+	p := map[string]interface{}{
+		"skip":  params.Skip,
+		"limit": params.Limit,
+	}
+	res := []models.RequestLinkCode{}
+
+	cq := neoism.CypherQuery{
+		Statement:  stmt,
+		Parameters: p,
+		Result:     &res,
+	}
+
+	err := conn.Cypher(&cq)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(res) == 0 {
+		return nil, nil
+	}
+
+	return res, nil
+}
+
+// 	AcceptLinkCode
+// int64
+// bool error
+func (service userService) AcceptLinkCode(requestID int64) (bool, error) {
+	stmt := `
+	MATCH (u:User)-[f:IS_A{status:0}]->(s:Student)
+	WHERE ID(f) = {requestID}
+	REMOVE f.properities
+	SET f.status = 1, f.updated_at = TIMESTAMP()
+	`
+	params := neoism.Props{
+		"requestID": requestID,
+	}
+
+	cq := neoism.CypherQuery{
+		Statement:  stmt,
+		Parameters: params,
+	}
+	err := conn.Cypher(&cq)
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
+// 	DeleteRequestLinkCode
+// int64
+// bool error
+func (service userService) DeleteRequestLinkCode(requestID int64) (bool, error) {
+	stmt := `
+		MATCH (u:User)-[f:IS_A{status:0}]->(s:Student) WHERE ID(f) = {requestID}
+		DETACH DELETE f
+		`
+	params := neoism.Props{
+		"requestID": requestID,
+	}
+
+	cq := neoism.CypherQuery{
+		Statement:  stmt,
+		Parameters: params,
+	}
+
+	err := conn.Cypher(&cq)
+	if err != nil {
+		return false, err
+	}
+	return true, nil
 }

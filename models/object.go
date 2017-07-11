@@ -122,7 +122,7 @@ type SemesterObject struct {
 	Name   string `json:"name,omitempty"`
 }
 
-// StudentObject struct
+// SupervisiorObject struct
 type SupervisiorObject struct {
 	ID   int64  `json:"id"`
 	Code string `json:"code"`

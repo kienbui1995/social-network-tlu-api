@@ -24,6 +24,7 @@ type ClassServiceInterface interface {
 
 	// A Student
 	GetAllByStudent(params helpers.ParamsGetAll, semesterCode string, studentCode string) ([]models.Class, error)
+	GetAllByRoom(params helpers.ParamsGetAll, day string, roomCode string) ([]models.Class, error)
 }
 
 // classService struct
@@ -120,6 +121,58 @@ func (service classService) GetAllByStudent(params helpers.ParamsGetAll, semeste
 	}
 	if len(res) > 0 {
 		fmt.Printf("res: %v\n", res)
+		return res[0].Classes, nil
+	}
+	return nil, nil
+}
+
+// GetAllByRoom func
+// helpers.ParamsGetAll string
+// []models.Class error
+func (service classService) GetAllByRoom(params helpers.ParamsGetAll, day string, roomCode string) ([]models.Class, error) {
+	var stmt string
+	stmt = fmt.Sprintf(`
+		MATCH (sub:Subject)<-[:TEACH_ABOUT]-(c:Class)<-[e:ENROLL]-(s:Student),
+					(c)-[:IN]->(r:Room),
+					(c)<-[:TEACH]-(t:Teacher),
+					(c)<-[:OPENED]-(semester:Semester)
+		WHERE toLower(r.code) = toLower({roomCode}) AND c.day = {day}
+		WITH
+		c{
+		id: ID(c),.*,
+		subject: sub{id:ID(sub),.code,.name},
+		room: r{id:ID(r),.code},
+		teacher: t{id:ID(t),.code,name: t.last_name+" "+t.first_name},
+		semester:semester{id:ID(semester), .code,.name,.symbol}
+		} AS class
+		ORDER BY %s
+		SKIP {skip}
+		LIMiT {limit}
+		return collect(distinct class) AS classes
+		  	`, "class."+params.Sort)
+
+	paramsQuery := map[string]interface{}{
+		"skip":     params.Skip,
+		"limit":    params.Limit,
+		"day":      day,
+		"roomCode": roomCode,
+	}
+	res := []struct {
+		Classes []models.Class `json:"classes"`
+	}{}
+	// res := []interface{}{}
+	cq := neoism.CypherQuery{
+		Statement:  stmt,
+		Parameters: paramsQuery,
+		Result:     &res,
+	}
+	//fmt.Printf("cq: %v\n", cq)
+	err := conn.Cypher(&cq)
+	if err != nil {
+		return nil, err
+	}
+	if len(res) > 0 {
+		//fmt.Printf("res: %v\n", res)
 		return res[0].Classes, nil
 	}
 	return nil, nil
@@ -392,6 +445,14 @@ func (service classService) UpdateFromTLU(semesterCode string) (bool, error) {
       MATCH(t:Teacher{code:toString(lop.Magv)})
       MATCH(sub:Subject{code:toString(lop.Mahp)})
       MERGE(r:Room{code:toString(lop.Maph)})
+			MERGE(g:Group{name:toString(lop.TenLop)})
+			ON CREATE SET
+				g.name = toString(lop.TenLop),
+				g.created_at = TIMESTAMP(),
+				g.status = 1,
+				g.posts= 0,
+				g.members=0,
+				g.privacy=2
       MERGE(r)<-[:IN]-(c:Class{code:toString(lop.Malop), symbol:toString(lop.Kyhieu)})<-[:TEACH]-(t)
       ON CREATE SET
         c.code =toString(lop.Malop),
@@ -402,6 +463,7 @@ func (service classService) UpdateFromTLU(semesterCode string) (bool, error) {
         c.finish_at = toString(lop.Giokt),
         c.status =1,
         c.created_at = timestamp()
+			MERGE ()
 	  	MERGE (c)-[:TEACH_ABOUT]->(sub)
       MERGE (semester)-[:OPENED]->(c)
 			`, configs.SURLGetClassListBySemesterCode+semesterCode, semesterCode)

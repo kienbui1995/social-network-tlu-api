@@ -379,3 +379,46 @@ func (controller GroupController) GetJoinedGroup(c *gin.Context) {
 	helpers.ResponseEntityListJSON(c, 1, "Get joined groups successful", groups, params, len(groups))
 	return
 }
+
+// GetClassGroupOfStudent func
+func (controller GroupController) GetClassGroupOfStudent(c *gin.Context) {
+	studentCode := c.Param("id")
+
+	// check exist membership
+	exist, errCheckExistStudent := services.NewStudentService().CheckExistStudent(studentCode)
+	if errCheckExistStudent != nil {
+		helpers.ResponseServerErrorJSON(c)
+		fmt.Printf("errCheckExistUser service: %s\n", errCheckExistStudent.Error())
+		return
+	}
+	if exist != true {
+		helpers.ResponseNotFoundJSON(c, configs.EcNoExistObject, "Not found student")
+		return
+	}
+
+	// get my userid
+	myUserID, errGetUserIDFromToken := GetUserIDFromToken(c.Request.Header.Get("token"))
+	if errGetUserIDFromToken != nil {
+		helpers.ResponseServerErrorJSON(c)
+		fmt.Printf("GetUserIDFromToken controller: %s\n", errGetUserIDFromToken.Error())
+		return
+	}
+
+	// ParamsGetAll
+	params := helpers.ParamsGetAll{}
+	// params.Type = configs.SCanMention
+	// params.Type = c.DefaultQuery("type", params.Type)
+	params.Skip, _ = strconv.Atoi(c.DefaultQuery("skip", configs.SSkip))
+	params.Limit, _ = strconv.Atoi(c.DefaultQuery("limit", configs.SLimit))
+	params.Sort = c.DefaultQuery("sort", configs.SSort)
+	params.Sort, _ = helpers.ConvertSort(params.Sort)
+
+	groups, errGetJoinedGroup := controller.Service.GetClassGroupOfStudent(params, studentCode, myUserID)
+	if errGetJoinedGroup != nil {
+		helpers.ResponseServerErrorJSON(c)
+		fmt.Printf("GetJoinedGroup service: %s\n", errGetJoinedGroup.Error())
+		return
+	}
+	helpers.ResponseEntityListJSON(c, 1, "Get joined groups successful", groups, params, len(groups))
+	return
+}

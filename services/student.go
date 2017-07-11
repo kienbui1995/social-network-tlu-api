@@ -17,7 +17,7 @@ type StudentServiceInterface interface {
 	// Delete(semesterID int64) (bool, error)
 	// Create(semester models.Semester) (int64, error)
 	// Update(semester models.Semester) (models.Semester, error)
-	// CheckExistSubject(subjectID int64) (bool, error)
+	CheckExistStudent(studentCode string) (bool, error)
 
 	//update from TLU
 	UpdateFromTLU(classCode string) (bool, error)
@@ -313,40 +313,39 @@ func (service studentService) GetAll(params helpers.ParamsGetAll) ([]models.Stud
 // 	return models.Post{}, errors.New("Dont' update user status")
 // }
 
-// // CheckExistPost func
-// // int64
-// // bool error
-// func (service subjectService) CheckExistSubject(subjectID int64) (bool, error) {
-// 	stmt := `
-// 		MATCH (s:Subject)
-// 		WHERE ID(s)={subjectID}
-// 		RETURN ID(s) AS id
-// 		`
-// 	params := neoism.Props{
-// 		"subjectID": subjectID,
-// 	}
-//
-// 	res := []struct {
-// 		ID int64 `json:"id"`
-// 	}{}
-// 	cq := neoism.CypherQuery{
-// 		Statement:  stmt,
-// 		Parameters: params,
-// 		Result:     &res,
-// 	}
-//
-// 	err := conn.Cypher(&cq)
-// 	if err != nil {
-// 		return false, err
-// 	}
-//
-// 	if len(res) > 0 {
-// 		if res[0].ID == subjectID {
-// 			return true, nil
-// 		}
-// 	}
-// 	return false, nil
-// }
+// CheckExistStudent func
+// string
+// bool error
+func (service studentService) CheckExistStudent(studentCode string) (bool, error) {
+	stmt := `
+  	MATCH (s:Student)
+		WHERE toLower(s.code) = toLower({studentCode})
+		RETURN ID(s) AS id
+  	`
+	params := neoism.Props{
+		"studentCode": studentCode,
+	}
+	res := []struct {
+		ID int `json:"id"`
+	}{}
+
+	cq := neoism.CypherQuery{
+		Statement:  stmt,
+		Parameters: params,
+		Result:     &res,
+	}
+
+	err := conn.Cypher(&cq)
+	if err != nil {
+		return false, err
+	}
+	if len(res) > 0 {
+		if res[0].ID >= 0 {
+			return true, nil
+		}
+	}
+	return false, nil
+}
 
 // UpdateFromTLU func
 // models.Post

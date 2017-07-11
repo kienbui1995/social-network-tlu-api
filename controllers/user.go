@@ -158,3 +158,119 @@ func (controller UserController) Update(c *gin.Context) {
 
 	helpers.ResponseSuccessJSON(c, 1, "Update user successful", userUpdate)
 }
+
+// RequestLinkCode func
+func (controller UserController) RequestLinkCode(c *gin.Context) {
+	userID, errParseInt := strconv.ParseInt(c.Param("id"), 10, 64)
+	if errParseInt != nil {
+		helpers.ResponseBadRequestJSON(c, configs.EcParamUserID, "Invalid user id")
+		return
+	}
+	exist, errCheckExistUser := controller.Service.CheckExistUser(userID)
+	if errCheckExistUser != nil {
+		helpers.ResponseServerErrorJSON(c)
+		fmt.Printf("CheckExistUser service: %s\n", errCheckExistUser.Error())
+		return
+	}
+	if exist == false {
+		helpers.ResponseNotFoundJSON(c, configs.EcAuthNoExistUser, "Don't exist user")
+		return
+	}
+
+	if myUserID, errGetUserIDFromToken := GetUserIDFromToken(c.Request.Header.Get("token")); myUserID != userID || errGetUserIDFromToken != nil {
+		helpers.ResponseAuthJSON(c, configs.EcPermission, "Permission error")
+		return
+	}
+
+	json := struct {
+		FullName string `json:"full_name,omitempty"`
+		Code     string `json:"code,omitempty"`
+		Photo    string `json:"photo,omitempty"`
+		Email    string `json:"email,omitempty"`
+	}{}
+	// Valida BadRequest (400)
+	if errBindJSON := c.BindJSON(&json); errBindJSON != nil {
+		helpers.ResponseBadRequestJSON(c, configs.EcParam, "BindJSON: "+errBindJSON.Error())
+		return
+	}
+	request := models.RequestLinkCode{}
+	errReplace := helpers.Replace(json, &request)
+	if errReplace != nil {
+		helpers.ResponseServerErrorJSON(c)
+		fmt.Printf("Replace helpers: %s\n", errReplace.Error())
+	}
+
+	requestID, errCreateRequestLinkCode := controller.Service.CreateRequestLinkCode(request, userID)
+	if errCreateRequestLinkCode != nil {
+		helpers.ResponseServerErrorJSON(c)
+		fmt.Printf("CreateRequestLinkCode service: %s\n", errCreateRequestLinkCode.Error())
+		return
+	}
+
+	helpers.ResponseSuccessJSON(c, 1, "create request link code successful", map[string]interface{}{"id": requestID})
+}
+
+// AcceptLinkCode func
+func (controller UserController) AcceptLinkCode(c *gin.Context) {
+	requestID, errParseInt := strconv.ParseInt(c.Param("id"), 10, 64)
+	if errParseInt != nil {
+		helpers.ResponseBadRequestJSON(c, configs.EcParamUserID, "Invalid request id")
+		return
+	}
+	// exist, errCheckExistUser := controller.Service.CheckExistUser(userID)
+	// if errCheckExistUser != nil {
+	// 	helpers.ResponseServerErrorJSON(c)
+	// 	fmt.Printf("CheckExistUser service: %s\n", errCheckExistUser.Error())
+	// 	return
+	// }
+	// if exist == false {
+	// 	helpers.ResponseNotFoundJSON(c, configs.EcAuthNoExistUser, "Don't exist user")
+	// 	return
+	// }
+
+	myUserID, errGetUserIDFromToken := GetUserIDFromToken(c.Request.Header.Get("token"))
+	if errGetUserIDFromToken != nil {
+		helpers.ResponseAuthJSON(c, configs.EcPermission, "Permission error")
+		fmt.Printf("GetUserIDFromToken controller: %s\n", errGetUserIDFromToken.Error())
+		return
+	}
+	role, errGetRoleFromUserID := GetRoleFromUserID(myUserID)
+	if errGetRoleFromUserID != nil {
+		helpers.ResponseAuthJSON(c, configs.EcPermission, "Permission error")
+		fmt.Printf("GetRoleFromUserID controller: %s\n", errGetRoleFromUserID.Error())
+		return
+	}
+
+	if role != configs.IAdminRole {
+		helpers.ResponseAuthJSON(c, configs.EcPermission, "Permission error")
+		return
+	}
+
+	accepted, errAcceptLinkCode := controller.Service.AcceptLinkCode(requestID)
+	if errAcceptLinkCode != nil {
+		helpers.ResponseServerErrorJSON(c)
+		fmt.Printf("AcceptLinkCode service: %s\n", errAcceptLinkCode.Error())
+		return
+	}
+	if accepted {
+		helpers.ResponseSuccessJSON(c, 1, "accept request link code successful", nil)
+	}
+}
+
+// DeleteRequestLinkCode func
+func (controller UserController) DeleteRequestLinkCode(c *gin.Context) {
+	requestID, _ := strconv.ParseInt(c.Param("id"), 10, 64)
+	//user, _ := controller.Service.Get
+	// Valida se existe a pessoa que será excluida (404)
+	// if user.IsEmpty() {
+	// 	helpers.ResponseNotFoundJSON(c, configs.EcNoExistObject, "Not Found User")
+	// 	return
+	// }
+	// Valida se deu erro ao tentar excluir (500)
+	if _, err := controller.Service.DeleteRequestLinkCode(requestID); err != nil {
+		helpers.ResponseServerErrorJSON(c)
+		fmt.Printf("Delete service: %s\n", err)
+		return
+	}
+	helpers.ResponseNoContentJSON(c)
+}
