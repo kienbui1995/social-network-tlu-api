@@ -19,5 +19,9 @@ func AddRoutesSemesters(r *gin.RouterGroup) {
 
 		routes2.GET("/:id/semesters", controller.GetSemesterOfStudent)
 	}
+	routes3 := r.Group("/teachers")
+	{
 
+		routes3.GET("/:id/semesters", controller.GetSemesterOfTeacher)
+	}
 }

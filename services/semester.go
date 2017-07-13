@@ -13,6 +13,7 @@ import (
 type SemesterServiceInterface interface {
 	// User
 	GetAllOfStudent(params helpers.ParamsGetAll, studentCode string) ([]models.Semester, error)
+	GetAllOfTeacher(params helpers.ParamsGetAll, teacherCode string) ([]models.Semester, error)
 	// Get(semesterID int64) (models.Semester, error)
 	// Delete(semesterID int64) (bool, error)
 	// Create(semester models.Semester) (int64, error)
@@ -382,6 +383,45 @@ func (service semesterService) GetAllOfStudent(params helpers.ParamsGetAll, stud
 
 	paramsQuery := map[string]interface{}{
 		"studentCode": studentCode,
+		"skip":        params.Skip,
+		"limit":       params.Limit,
+	}
+	res := []struct {
+		Semesters []models.Semester `json:"semesters"`
+	}{}
+	cq := neoism.CypherQuery{
+		Statement:  stmt,
+		Parameters: paramsQuery,
+		Result:     &res,
+	}
+	fmt.Printf("cq: %v\n", cq)
+	err := conn.Cypher(&cq)
+	if err != nil {
+		return nil, err
+	}
+	if len(res) > 0 {
+		return res[0].Semesters, nil
+	}
+	return nil, nil
+}
+
+// GetAllOfStudent func
+// helpers.ParamsGetAll
+// models.Post error
+func (service semesterService) GetAllOfTeacher(params helpers.ParamsGetAll, teacherCode string) ([]models.Semester, error) {
+	var stmt string
+	stmt = fmt.Sprintf(`
+		MATCH(t:Teacher) WHERE toLower(t.code) = toLower({teacherCode})
+		MATCH (se:Semester) WHERE exists((se)--(:Class)--(t))
+		WITH se{id:ID(se),.* } AS semester
+		ORDER BY %s
+		SKIP {skip}
+		LIMIT {limit}
+		RETURN collect(semester) AS semesters
+		  	`, "semester."+params.Sort)
+
+	paramsQuery := map[string]interface{}{
+		"teacherCode": teacherCode,
 		"skip":        params.Skip,
 		"limit":       params.Limit,
 	}

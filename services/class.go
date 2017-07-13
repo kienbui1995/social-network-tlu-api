@@ -25,6 +25,8 @@ type ClassServiceInterface interface {
 	// A Student
 	GetAllByStudent(params helpers.ParamsGetAll, semesterCode string, studentCode string) ([]models.Class, error)
 	GetAllByRoom(params helpers.ParamsGetAll, day string, roomCode string) ([]models.Class, error)
+
+	GetAllByTeacher(params helpers.ParamsGetAll, semesterCode string, teacherCode string) ([]models.Class, error)
 }
 
 // classService struct
@@ -103,6 +105,58 @@ func (service classService) GetAllByStudent(params helpers.ParamsGetAll, semeste
 		"skip":         params.Skip,
 		"limit":        params.Limit,
 		"studentCode":  studentCode,
+		"semesterCode": semesterCode,
+	}
+	res := []struct {
+		Classes []models.Class `json:"classes"`
+	}{}
+	// res := []interface{}{}
+	cq := neoism.CypherQuery{
+		Statement:  stmt,
+		Parameters: paramsQuery,
+		Result:     &res,
+	}
+	fmt.Printf("cq: %v\n", cq)
+	err := conn.Cypher(&cq)
+	if err != nil {
+		return nil, err
+	}
+	if len(res) > 0 {
+		fmt.Printf("res: %v\n", res)
+		return res[0].Classes, nil
+	}
+	return nil, nil
+}
+
+// GetAllByTeacher func
+// helpers.ParamsGetAll string
+// []models.Class error
+func (service classService) GetAllByTeacher(params helpers.ParamsGetAll, semesterCode string, teacherCode string) ([]models.Class, error) {
+	var stmt string
+	stmt = fmt.Sprintf(`
+		MATCH (sub:Subject)<-[:TEACH_ABOUT]-(c:Class)<-[:TEACH]-(t:Teacher),
+					(c)-[:IN]->(r:Room),
+					(c)<-[e:ENROLL]-(s:Student),
+					(c)<-[:OPENED]-(semester:Semester)
+		WHERE toLower(t.code) = toLower({teacherCode}) AND semester.code = {semesterCode}
+		WITH
+		c{
+		id: ID(c),.*,
+		subject: sub{id:ID(sub),.code,.name},
+		room: r{id:ID(r),.code},
+		teacher: t{id:ID(t),.code,name: t.last_name+" "+t.first_name}
+		} AS class
+		ORDER BY %s
+		SKIP {skip}
+		LIMiT {limit}
+		return collect(distinct class) AS classes
+
+		  	`, "class."+params.Sort)
+
+	paramsQuery := map[string]interface{}{
+		"skip":         params.Skip,
+		"limit":        params.Limit,
+		"teacherCode":  teacherCode,
 		"semesterCode": semesterCode,
 	}
 	res := []struct {
