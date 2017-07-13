@@ -46,7 +46,7 @@ func (service groupService) GetAll(params helpers.ParamsGetAll, myUserID int64) 
 	var stmt string
 	stmt = fmt.Sprintf(`
 				MATCH(me:User) WHERE ID(me) = {myuserid}
-				MATCH (g:Group)
+				MATCH (g:Group) WHERE g.type=1
 				RETURN
 					ID(g) AS id,
 					g.name AS name,
@@ -158,6 +158,7 @@ func (service groupService) Create(group models.Group, myUserID int64) (int64, e
 		"pending_requests": 0,
 		"members":          0,
 		"posts":            0,
+		"type":             1,
 	}
 	stmt := `
 			MATCH(u:User) WHERE ID(u) = {myUserID}
@@ -266,7 +267,7 @@ func (service groupService) CheckUserRole(groupID int64, userID int64) (int, err
 	MATCH (u:User) WHERE ID(u) = {userID}
 	RETURN
 		exists((u)-[:JOIN{role:1}]->(g)) OR exists((u)-->(:Student)-->(:Class)-->(g))  AS is_member,
-		exists((u)-[:JOIN{role:2}]->(g)) OR exists((u)-[:JOIN{role:3}]->(g)) AS is_admin,
+		exists((u)-[:JOIN{role:2}]->(g)) OR exists((u)-[:JOIN{role:3}]->(g)) OR exists((u)-->(:Teacher)-->(:Class)-->(g)) AS is_admin,
 		exists((u)-[:JOIN{role:4}]->(g)) AS blocked,
 		exists((u)-[:JOIN{status:0}]->(g)) AS pending,
 		exists((u)-[:JOIN]->(g))=false AND g.privacy=1 AS can_join,
@@ -326,7 +327,7 @@ func (service groupService) GetJoinedGroup(params helpers.ParamsGetAll, userID i
 	stmt = fmt.Sprintf(`
 				MATCH(me:User) WHERE ID(me) = {myuserid}
 				MATCH (g:Group)<-[j:JOIN]-(u:User)
-				WHERE ID(u) = {userID}
+				WHERE ID(u) = {userID} AND g.type=1
 				RETURN
 					ID(g) AS id,
 					g.name AS name,
@@ -397,7 +398,7 @@ func (service groupService) GetClassGroupOfStudent(params helpers.ParamsGetAll, 
 					exists((me)-[:JOIN{status:0}]->(g)) AS is_pending,
 					g.privacy = 2  and exists((me)-[:JOIN]->(g))=false AS can_request,
 					g.privacy = 1  and exists((me)-[:JOIN]->(g))=false AS can_join,
-					exists((me)-[:JOIN{role:2}]->(g)) OR exists((me)-[:JOIN{role:3}]->(g)) AS is_admin
+					exists((me)-[:JOIN{role:2}]->(g)) OR exists((me)-[:JOIN{role:3}]->(g)) OR exists((me)-->(:Teacher)-->(:Class)-->(g))AS is_admin
 				ORDER BY %s
 				SKIP {skip}
 				LIMIT {limit}

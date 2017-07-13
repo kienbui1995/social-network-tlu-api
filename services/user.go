@@ -23,6 +23,7 @@ type UserServiceInterface interface {
 
 	CreateRequestLinkCode(request models.RequestLinkCode, userID int64) (int64, error)
 	AcceptLinkCode(requestID int64) (bool, error)
+	AcceptLinkCodeByEmail(requestID int64, code string) (bool, error)
 	DeleteRequestLinkCode(requestID int64) (bool, error)
 	GetAllRequestsLinkCode(params helpers.ParamsGetAll) ([]models.RequestLinkCode, error)
 	CheckExistRequestLinkCode(requestID int64) (bool, error)
@@ -376,13 +377,14 @@ func (service userService) CreateRequestLinkCode(request models.RequestLinkCode,
 	if len(request.Email) > 0 {
 		stmt = `
 			MATCH (u:User) WHERE ID(u) = {userID}
-			MATCH (s:Student) WHERE toLower(email) = toLower({email})
+			MATCH (s:Student) WHERE toLower(s.email) = toLower({email})
 			CREATE (u)-[f:IS_A]->(s)
 			SET
 				f.created_at = TIMESTAMP(),
-				f.verifycation_code = {verifycationCode}
+				f.verifycation_code = {verifycationCode},
+				f.verifycation_expired_at = TIMESTAMP()+1800000,
 				f.status=0
-			RETURN ID(f)
+			RETURN ID(f) AS id
 	`
 		params = neoism.Props{
 			"userID":           userID,
@@ -496,6 +498,40 @@ func (service userService) AcceptLinkCode(requestID int64) (bool, error) {
 	return true, nil
 }
 
+// 	AcceptLinkCode
+// int64
+// bool error
+func (service userService) AcceptLinkCodeByEmail(requestID int64, code string) (bool, error) {
+	stmt := `
+	MATCH (u:User)-[f:IS_A{status:0}]->(s:Student)
+	WHERE ID(f) = {requestID} AND f.verifycation_code = {code} AND f.verifycation_expired_at > TIMESTAMP()
+	REMOVE f.properities
+	SET f.status = 1, f.updated_at = TIMESTAMP()
+	RETURN CASE f.status WHEN 1 THEN true ELSE FALSE END AS accept
+	`
+	params := neoism.Props{
+		"requestID": requestID,
+		"code":      code,
+	}
+	var res []struct {
+		Accept bool `json:"accept"`
+	}
+	cq := neoism.CypherQuery{
+		Statement:  stmt,
+		Parameters: params,
+		Result:     &res,
+	}
+	err := conn.Cypher(&cq)
+	if err != nil {
+		return false, err
+	}
+
+	if len(res) > 0 {
+		return res[0].Accept, nil
+	}
+	return false, nil
+}
+
 // 	DeleteRequestLinkCode
 // int64
 // bool error
@@ -552,3 +588,67 @@ func (service userService) CheckExistRequestLinkCode(requestID int64) (bool, err
 	}
 	return false, nil
 }
+
+// //CreateRecoverPassword func
+// func (service userService) CreateRecoverPassword(email string, recoveryCode string) (bool, error) {
+// 	stmt := `
+// 	MATCH (u:User)
+// 	WHERE u.email = {email}
+// 	SET u.recovery_code = {recoverycode}, u.recovery_expired_at = TIMESTAMP()+1800000
+// 	RETURN ID(u) as id
+// 	`
+// 	params := neoism.Props{
+// 		"email":        email,
+// 		"recoverycode": recoveryCode,
+// 	}
+// 	var res []struct {
+// 		ID int64 `json:"id"`
+// 	}
+// 	cq := neoism.CypherQuery{
+// 		Statement:  stmt,
+// 		Parameters: params,
+// 		Result:     &res,
+// 	}
+// 	if err := conn.Cypher(&cq); err != nil {
+// 		return false, err
+// 	}
+// 	if len(res) > 0 {
+// 		if res[0].ID >= 0 {
+// 			return true, nil
+// 		}
+// 		return false, errors.New("CreateRecoverPassword fail")
+// 	}
+// 	return false, nil
+// }
+//
+// //VerifyRecoveryCode func
+// func (service userService) VerifyRecoveryCode(email string, recoveryCode string) (int64, error) {
+//
+// 	stmt := `
+// 		MATCH (u:User)
+// 		WHERE u.email ={email} and u.recovery_code = {recoverycode}  and u.recovery_expired_at > TIMESTAMP()
+// 		RETURN ID(u) as id
+// 		`
+// 	params := neoism.Props{
+// 		"email":        email,
+// 		"recoverycode": recoveryCode,
+// 	}
+// 	res := []struct {
+// 		ID int64 `json:"id"`
+// 	}{}
+// 	cq := neoism.CypherQuery{
+// 		Statement:  stmt,
+// 		Parameters: params,
+// 		Result:     &res,
+// 	}
+// 	if err := conn.Cypher(&cq); err != nil {
+// 		return -1, err
+// 	}
+// 	if len(res) > 0 {
+// 		if res[0].ID >= 0 {
+// 			return res[0].ID, nil
+// 		}
+// 		return -1, errors.New("VerifyRecoveryCode fail")
+// 	}
+// 	return -1, nil
+// }

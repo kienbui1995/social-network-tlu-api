@@ -199,7 +199,8 @@ func (controller UserController) RequestLinkCode(c *gin.Context) {
 		helpers.ResponseServerErrorJSON(c)
 		fmt.Printf("Replace helpers: %s\n", errReplace.Error())
 	}
-
+	activecode := helpers.RandStringBytes(6)
+	request.VerificationCode = activecode
 	requestID, errCreateRequestLinkCode := controller.Service.CreateRequestLinkCode(request, userID)
 	if errCreateRequestLinkCode != nil {
 		helpers.ResponseServerErrorJSON(c)
@@ -210,6 +211,16 @@ func (controller UserController) RequestLinkCode(c *gin.Context) {
 		helpers.ResponseServerErrorJSON(c)
 		fmt.Printf("CreateRequestLinkCode service: Don't create request link code\n")
 		return
+	}
+
+	if len(request.Email) > 0 {
+		go func() {
+			sender := helpers.NewSender(configs.MailAddress, configs.MailKey)
+			var email []string
+			email = append(email, request.Email)
+			// linkActive := "<a href='tlu.cloudapp.net:8080/activation?use_id=" + string(userID) + "&active_code=" + activecode + "'>Active</a>"
+			sender.SendMail(email, fmt.Sprintf("link code user on TLSEN"), fmt.Sprintf("Content-Type: text/html; charset=UTF-8\n\ncode: %s for request id %d", request.VerificationCode, requestID))
+		}()
 	}
 	helpers.ResponseSuccessJSON(c, 1, "create request link code successful", map[string]interface{}{"id": requestID})
 }
@@ -231,7 +242,20 @@ func (controller UserController) AcceptLinkCode(c *gin.Context) {
 	// 	helpers.ResponseNotFoundJSON(c, configs.EcAuthNoExistUser, "Don't exist user")
 	// 	return
 	// }
-
+	code := c.Query("code")
+	if len(code) > 0 {
+		accepted, errAcceptLinkCode := controller.Service.AcceptLinkCodeByEmail(requestID, code)
+		if errAcceptLinkCode != nil {
+			helpers.ResponseServerErrorJSON(c)
+			fmt.Printf("AcceptLinkCode service: %s\n", errAcceptLinkCode.Error())
+			return
+		}
+		if accepted {
+			helpers.ResponseSuccessJSON(c, 1, "accept request link code successful", nil)
+		}
+		helpers.ResponseBadRequestJSON(c, configs.EcAuthWrongRecoveryCode, "wrong code")
+		return
+	}
 	myUserID, errGetUserIDFromToken := GetUserIDFromToken(c.Request.Header.Get("token"))
 	if errGetUserIDFromToken != nil {
 		helpers.ResponseAuthJSON(c, configs.EcPermission, "Permission error")

@@ -99,8 +99,8 @@ func (controller AccountController) SignUp(c *gin.Context) {
 		sender := helpers.NewSender(configs.MailAddress, configs.MailKey)
 		var email []string
 		email = append(email, user.Email)
-		linkActive := "<a href='tlu.cloudapp.net:8080/activation?use_id=" + string(userID) + "&active_code=" + activecode + "'>Active</a>"
-		sender.SendMail(email, fmt.Sprintf("Active user %s on TLSEN", user.Username), fmt.Sprintf("Content-Type: text/html; charset=UTF-8\n\ncode: %s OR active via link: %s", activecode, linkActive))
+		// linkActive := "<a href='tlu.cloudapp.net:8080/activation?use_id=" + string(userID) + "&active_code=" + activecode + "'>Active</a>"
+		sender.SendMail(email, fmt.Sprintf("Active user %s on TLSEN", user.Username), fmt.Sprintf("Content-Type: text/html; charset=UTF-8\n\ncode: %s", activecode))
 	}()
 
 	helpers.ResponseCreatedJSON(c, 1, "Create user successful!", map[string]interface{}{"id": userID})

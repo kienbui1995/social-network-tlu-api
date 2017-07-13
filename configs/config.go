@@ -20,7 +20,7 @@ const (
 // Mail Sender const
 const (
 	MailAddress = "kien.laohac@gmail.com"
-	MailKey     = ""
+	MailKey     = "vcbnjcvvcspkwdvi"
 )
 
 //// Twilio const
