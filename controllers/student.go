@@ -261,7 +261,7 @@ func (controller StudentController) UpdateFromTLU(c *gin.Context) {
 
 // GetStudentsEnrolledClass func
 func (controller StudentController) GetStudentsEnrolledClass(c *gin.Context) {
-	code, errParseInt := strconv.ParseInt(c.Query("class_code"), 10, 64)
+	code, errParseInt := strconv.ParseInt(c.Param("id"), 10, 64)
 	if errParseInt != nil {
 		helpers.ResponseBadRequestJSON(c, configs.EcParam, "Invalid params")
 		return
