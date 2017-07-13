@@ -479,8 +479,10 @@ func (service userService) AcceptLinkCode(requestID int64) (bool, error) {
 	stmt := `
 	MATCH (u:User)-[f:IS_A{status:0}]->(s:Student)
 	WHERE ID(f) = {requestID}
-	REMOVE f.properities
-	SET f.status = 1, f.updated_at = TIMESTAMP()
+	MATCH (:User)-[f2:IS_A]->(s)
+	DELETE f2
+	CREATE (u)-[f3:IS_A]->(s)
+	SET f3.status = 1, f3.created_at = TIMESTAMP()
 	`
 	params := neoism.Props{
 		"requestID": requestID,
@@ -505,9 +507,11 @@ func (service userService) AcceptLinkCodeByEmail(requestID int64, code string) (
 	stmt := `
 	MATCH (u:User)-[f:IS_A{status:0}]->(s:Student)
 	WHERE ID(f) = {requestID} AND f.verifycation_code = {code} AND f.verifycation_expired_at > TIMESTAMP()
-	REMOVE f.properities
-	SET f.status = 1, f.updated_at = TIMESTAMP()
-	RETURN CASE f.status WHEN 1 THEN true ELSE FALSE END AS accept
+	MATCH (:User)-[r:IS_A]->(s)
+	DELETE r
+	WITH distinct u, s, type(r) as type
+	CALL apoc.create.relationship(u, type, {status:1,created_at:TIMESTAMP()}, s) YIELD rel
+	RETURN CASE rel.status WHEN 1 THEN true ELSE FALSE END AS accept
 	`
 	params := neoism.Props{
 		"requestID": requestID,

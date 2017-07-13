@@ -252,6 +252,7 @@ func (controller UserController) AcceptLinkCode(c *gin.Context) {
 		}
 		if accepted {
 			helpers.ResponseSuccessJSON(c, 1, "accept request link code successful", nil)
+			return
 		}
 		helpers.ResponseBadRequestJSON(c, configs.EcAuthWrongRecoveryCode, "wrong code")
 		return

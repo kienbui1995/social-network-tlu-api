@@ -156,7 +156,9 @@ func (controller AccountController) Login(c *gin.Context) {
 	} else if role == configs.IUserRole {
 		sRole = configs.SUserRole
 	}
-	helpers.ResponseSuccessJSON(c, configs.EcSuccess, "Login successful", map[string]interface{}{"id": json.ID, "token": token, "role": sRole})
+	var sCode string
+	sCode, _ = controller.Service.GetCodeFromUserID(json.ID)
+	helpers.ResponseSuccessJSON(c, configs.EcSuccess, "Login successful", map[string]interface{}{"id": json.ID, "token": token, "role": sRole, "code": sCode})
 }
 
 // Logout func

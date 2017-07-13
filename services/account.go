@@ -33,6 +33,7 @@ type AccountServiceInterface interface {
 	DeleteActiveCode(userID int64) (bool, error)
 
 	GetRoleFromUserID(userID int64) (int, error)
+	GetCodeFromUserID(userID int64) (string, error)
 	// AddRoleAndCodeToAccount(account models.Account) (models.Account, error)
 	GetDeviceByUserIDs(accountIDs []int64) ([]string, error)
 }
@@ -699,6 +700,34 @@ func (service accountService) GetRoleFromUserID(userID int64) (int, error) {
 		return -1, nil
 	}
 	return -1, errors.New("get role by userID fail")
+}
+
+func (service accountService) GetCodeFromUserID(userID int64) (string, error) {
+	stmt := `
+	OPTIONAL MATCH(u:User{status:1})-[:IS_A{status:1}]->(s)
+	WHERE ID(u)= {userID}
+	RETURN
+		s.code AS code
+	`
+	res := []struct {
+		Code string `json:"code"`
+	}{}
+	params := neoism.Props{
+		"userID": userID,
+	}
+	cq := neoism.CypherQuery{
+		Statement:  stmt,
+		Parameters: params,
+		Result:     &res,
+	}
+	err := conn.Cypher(&cq)
+	if err != nil {
+		return "", err
+	}
+	if len(res) > 0 {
+		return res[0].Code, nil
+	}
+	return "", errors.New("get role by userID fail")
 }
 
 // AddRoleAndCodeToAccount func
