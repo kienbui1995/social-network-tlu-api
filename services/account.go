@@ -248,7 +248,8 @@ func (service accountService) Create(user models.User) (int64, error) {
 		facebook_token: {facebooktoken},
 		posts: {posts},
 		followers: {followers},
-		followings: {followings}
+		followings: {followings},
+		status: 1
 		}) SET u.created_at = TIMESTAMP()
 	return ID(u) as id
 	`

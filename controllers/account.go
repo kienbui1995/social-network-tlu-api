@@ -226,7 +226,27 @@ func (controller AccountController) LoginViaFacebook(c *gin.Context) {
 				helpers.ResponseBadRequestJSON(c, 1, "Don't save token"+errSaveToken.Error())
 				return
 			}
-			data := map[string]interface{}{"token": tokenstring, "id": id}
+			role, errGetRoleFromUserID := GetRoleFromUserID(id)
+			if errGetRoleFromUserID != nil {
+				helpers.ResponseServerErrorJSON(c)
+				fmt.Printf("GetRoleFromUserID helpers: %v\n", errGetRoleFromUserID.Error())
+			}
+			var sRole string
+			if role == configs.IAdminRole {
+				sRole = configs.SAdminRole
+			} else if role == configs.ISupervisorRole {
+				sRole = configs.SSupervisiorRole
+			} else if role == configs.ITeacherRole {
+				sRole = configs.STeacherRole
+			} else if role == configs.IStudentRole {
+				sRole = configs.SStudentRole
+			} else if role == configs.IUserRole {
+				sRole = configs.SUserRole
+			}
+			var sCode string
+			sCode, _ = controller.Service.GetCodeFromUserID(id)
+			data := map[string]interface{}{"token": tokenstring, "id": id, "code": sCode, "role": sRole}
+
 			helpers.ResponseSuccessJSON(c, 1, "Login successful!", data)
 			return
 		}
